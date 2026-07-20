@@ -145,7 +145,10 @@
     {% if user.is_authenticated %}
     <div class="nav-user">
       Signed in as <strong style="color:#fff;">{{ user.username }}</strong><br>
-      <a href="{% url 'logout' %}">Log out</a>
+      <form method="post" action="{% url 'logout' %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn-link" style="color:#8ab4f8; text-decoration:underline; background:none; border:none; padding:0; font-size:inherit; cursor:pointer;">Log out</button>
+      </form>
     </div>
     {% endif %}
   </div>
@@ -214,6 +217,69 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restore scroll position instantly (no smooth animation, no visible jump-then-jump-back)
   window.scrollTo(0, y);
 });
+
+// Upload progress bars -- any form with class="progress-upload-form" gets a
+// real byte-progress bar during upload (Excel/working paper/template/
+// reference report uploads can be sizeable files). Uses XHR instead of a
+// plain form submit so we can track upload progress; on completion,
+// navigates to wherever the server redirected (xhr.responseURL), so the
+// resulting page (with its success/error messages) loads exactly as if a
+// normal form submission had happened.
+document.querySelectorAll('.progress-upload-form').forEach((form) => {
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const scope = form.parentElement;
+    const progressContainer = form.querySelector('.upload-progress') || (scope && scope.querySelector('.upload-progress'));
+    const progressBar = progressContainer ? progressContainer.querySelector('progress') : null;
+    const progressLabel = progressContainer ? progressContainer.querySelector('.upload-progress-label') : null;
+    const submitBtn = form.querySelector('button[type=submit]');
+
+    if (progressContainer) progressContainer.style.display = 'block';
+    if (submitBtn) submitBtn.disabled = true;
+
+    const xhr = new XMLHttpRequest();
+    xhr.open(form.method || 'POST', form.action, true);
+    xhr.upload.addEventListener('progress', (ev) => {
+      if (ev.lengthComputable && progressBar) {
+        const pct = Math.round((ev.loaded / ev.total) * 100);
+        progressBar.value = pct;
+        if (progressLabel) progressLabel.textContent = pct + '%';
+      }
+    });
+    xhr.onload = () => {
+      window.location.href = xhr.responseURL || window.location.href;
+    };
+    xhr.onerror = () => {
+      if (submitBtn) submitBtn.disabled = false;
+      if (progressContainer) progressContainer.style.display = 'none';
+      alert('Upload failed — please try again.');
+    };
+    xhr.send(new FormData(form));
+  });
+});
+
+// Shared search-highlighting utility: wraps the matched substring of a
+// cell's text in <mark>, restoring the original text when the query is
+// cleared or changes. Only safe to use on cells that are plain text (no
+// nested links/buttons) -- textContent is used as the source of truth, so
+// any original markup would be lost.
+function highlightSearchMatch(cell, query) {
+  if (!cell) return;
+  if (cell.dataset.originalText === undefined) {
+    cell.dataset.originalText = cell.textContent;
+  }
+  const original = cell.dataset.originalText;
+  if (!query) {
+    cell.textContent = original;
+    return;
+  }
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp('(' + escaped + ')', 'ig');
+  cell.innerHTML = original.replace(regex, '<mark>$1</mark>');
+}
 </script>
+<style>
+  mark { background: #fff3a3; color: inherit; padding: 0 1px; border-radius: 2px; }
+</style>
 </body>
 </html>

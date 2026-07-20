@@ -20,12 +20,17 @@
 
 <div class="card" id="section-excel">
   <h2>1. Import IKS control list (Excel)</h2>
-  <form method="post" action="{% url 'upload_excel' project.pk %}" enctype="multipart/form-data" data-section="section-excel">
+  <p style="font-size:12px; color:var(--wp-text-muted); margin-top:-8px;">Expected columns, in order: <strong>1st</strong> = ID, <strong>2nd</strong> = Kontrollziel, <strong>3rd</strong> = Kontrollbeschreibung.</p>
+  <form method="post" action="{% url 'upload_excel' project.pk %}" enctype="multipart/form-data" data-section="section-excel" class="progress-upload-form">
     {% csrf_token %}
     <label class="dropzone" for="excel-input" id="excel-dropzone">
       <span id="excel-dropzone-text">Drag and drop the IKS.xlsx file here, or click to browse.</span>
       <input type="file" name="file" id="excel-input" accept=".xlsx" style="position:absolute; width:1px; height:1px; opacity:0; overflow:hidden;" required>
     </label>
+    <div class="upload-progress" style="display:none; margin-top:10px;">
+      <progress value="0" max="100" style="width:100%;"></progress>
+      <span class="upload-progress-label" style="font-size:12px; color:var(--wp-text-muted);"></span>
+    </div>
     <div style="margin-top:10px;"><button class="btn secondary" type="submit">Import controls</button></div>
   </form>
 </div>
@@ -33,12 +38,16 @@
 <div class="card" id="section-workingpapers">
   <h2>2. Upload Arbeitspapier working papers (Word)</h2>
   <p style="font-size:12.5px; color:var(--wp-text-muted); margin-top:-8px;">Each upload is automatically validated against the IKS master list (Kontrollziel + Kontrollbeschreibung match).</p>
-  <form method="post" action="{% url 'upload_arbeitspapier' project.pk %}" enctype="multipart/form-data" data-section="section-workingpapers">
+  <form method="post" action="{% url 'upload_arbeitspapier' project.pk %}" enctype="multipart/form-data" data-section="section-workingpapers" class="progress-upload-form">
     {% csrf_token %}
     <label class="dropzone" for="wp-input" id="wp-dropzone">
       <span id="wp-dropzone-text">Drag and drop one or more .docx working papers here, or click to browse.</span>
       <input type="file" name="files" id="wp-input" accept=".docx" multiple style="position:absolute; width:1px; height:1px; opacity:0; overflow:hidden;" required>
     </label>
+    <div class="upload-progress" style="display:none; margin-top:10px;">
+      <progress value="0" max="100" style="width:100%;"></progress>
+      <span class="upload-progress-label" style="font-size:12px; color:var(--wp-text-muted);"></span>
+    </div>
     <div style="margin-top:10px;"><button class="btn secondary" type="submit">Import working papers</button></div>
   </form>
 </div>
@@ -235,11 +244,15 @@ if (searchInput) {
   searchInput.addEventListener('input', () => {
     const query = searchInput.value.trim().toLowerCase();
     document.querySelectorAll('tr.control-row').forEach((row) => {
-      const controlId = row.querySelector('.cid')?.textContent.toLowerCase() || '';
-      const kontrollziel = row.querySelector('.kontrollziel-cell')?.textContent.toLowerCase() || '';
+      const cidCell = row.querySelector('.cid');
+      const kzCell = row.querySelector('.kontrollziel-cell');
+      const controlId = cidCell?.textContent.toLowerCase() || '';
+      const kontrollziel = kzCell?.textContent.toLowerCase() || '';
       const testActivities = row.querySelector('textarea[name="test_activities_text"]')?.value.toLowerCase() || '';
       const matches = !query || controlId.includes(query) || kontrollziel.includes(query) || testActivities.includes(query);
       row.style.display = matches ? '' : 'none';
+      highlightSearchMatch(cidCell, matches ? query : '');
+      highlightSearchMatch(kzCell, matches ? query : '');
     });
   });
 }

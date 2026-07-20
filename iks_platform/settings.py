@@ -167,3 +167,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'project_list'
 LOGOUT_REDIRECT_URL = 'login'
+
+# Users must log in again after 8 hours, regardless of activity (fixed expiry
+# from login time, not a rolling/inactivity timeout).
+SESSION_COOKIE_AGE = 8 * 60 * 60
+SESSION_SAVE_EVERY_REQUEST = False
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False

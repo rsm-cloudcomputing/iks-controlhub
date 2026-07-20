@@ -129,6 +129,30 @@ def project_create(request):
     })
 
 
+def _revalidate_project_submissions(project):
+    """
+    Re-runs validation for every control's latest submission in a project --
+    needed whenever the report language changes, since the standard-phrasing
+    check (and its EN/DE phrase set) depends on it. Without this, the
+    Validation column would keep showing results computed against the OLD
+    language until the next re-import.
+    """
+    from .services import run_validations
+    for control in project.controls.all():
+        submission = control.latest_submission
+        if not submission:
+            continue
+        control_values = {"kontrollziel": control.kontrollziel, "kontrollbeschreibung": control.kontrollbeschreibung}
+        parsed_like = {
+            "kontrollziel": control.kontrollziel,
+            "kontrollbeschreibung": control.kontrollbeschreibung,
+            "test_activities": submission.test_activities,
+        }
+        validation_results = run_validations(control_values, parsed_like, project.language)
+        submission.validation_results = json.dumps(validation_results)
+        submission.save(update_fields=["validation_results"])
+
+
 @login_required
 def project_update_field(request, pk):
     """AJAX: save a single project field immediately, no full page reload -- used
@@ -140,9 +164,12 @@ def project_update_field(request, pk):
         value = request.POST.get("value")
         allowed_fields = {"report_kind", "audit_type", "language"}
         if field in allowed_fields and value:
+            old_language = project.language
             setattr(project, field, value)
             project.updated_by = request.user
             project.save(update_fields=[field, "updated_by", "updated_at"])
+            if field == "language" and value != old_language:
+                _revalidate_project_submissions(project)
             return JsonResponse({"status": "ok"})
         return JsonResponse({"status": "error", "message": "Field not allowed"}, status=400)
     return JsonResponse({"status": "error"}, status=400)
@@ -153,6 +180,7 @@ def project_update(request, pk):
     project = get_object_or_404(Project, pk=pk)
     custom_placeholders, custom_placeholders_after = _split_custom_placeholders_for_form()
     if request.method == "POST":
+        old_language = project.language
         form = ProjectForm(request.POST, instance=project)
         if form.is_valid():
             project = form.save(commit=False)
@@ -169,7 +197,11 @@ def project_update(request, pk):
             project.customer_address = extra.get("customer_long_address") or extra.get("customer_short_address") or ""
             project.save()
 
-            messages.success(request, f'Project "{project.customer_name}" updated.')
+            if project.language != old_language:
+                _revalidate_project_submissions(project)
+                messages.success(request, f'Project "{project.customer_name}" updated. Validation results were re-checked against the new report language.')
+            else:
+                messages.success(request, f'Project "{project.customer_name}" updated.')
             return redirect("project_detail", pk=project.pk)
     else:
         form = ProjectForm(instance=project)
