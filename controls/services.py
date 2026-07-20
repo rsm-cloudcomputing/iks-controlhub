@@ -649,12 +649,32 @@ def _convert_via_mammoth_weasyprint(input_path, output_dir):
     except ImportError:
         return None
 
+    # Without explicit CSS, weasyprint falls back to default table
+    # auto-sizing with no word-wrap -- columns can render far too narrow for
+    # their content (e.g. a placeholder-heavy template preview), causing text
+    # to visibly clip and overlap into neighboring cells. table-layout:fixed
+    # with equal column widths plus overflow-wrap fixes that, at the cost of
+    # not preserving the original DOCX's exact column proportions (a known,
+    # acceptable tradeoff for a rough preview -- actual report generation via
+    # docxtpl never goes through this code path at all).
+    PREVIEW_CSS = """
+        <style>
+          @page { size: A4 landscape; margin: 1.5cm; }
+          body { font-family: Helvetica, Arial, sans-serif; font-size: 10pt; line-height: 1.4; }
+          table { table-layout: fixed; width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+          td, th { border: 1px solid #999; padding: 5px 7px; word-wrap: break-word; overflow-wrap: break-word;
+                   vertical-align: top; text-align: left; }
+          th { background: #2271b1; color: #fff; }
+          h1, h2, h3 { color: #2271b1; }
+        </style>
+    """
+
     try:
         with open(input_path, "rb") as docx_file:
             html = mammoth.convert_to_html(docx_file).value
         pdf_path = Path(output_dir) / (Path(input_path).stem + ".pdf")
         Path(output_dir).mkdir(parents=True, exist_ok=True)
-        HTML(string=f"<html><body>{html}</body></html>").write_pdf(str(pdf_path))
+        HTML(string=f"<html><head>{PREVIEW_CSS}</head><body>{html}</body></html>").write_pdf(str(pdf_path))
         return pdf_path if pdf_path.exists() else None
     except Exception:
         return None
