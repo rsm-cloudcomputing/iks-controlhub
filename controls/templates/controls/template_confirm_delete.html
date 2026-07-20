@@ -4,7 +4,7 @@
 {% block content %}
 <div class="card" style="max-width:480px;">
   <p>Are you sure you want to delete <strong>{{ template.name }}</strong> ({{ template.get_audit_type_display }}, {{ template.get_language_display }})?</p>
-  <p style="color:#b32d2e; font-size:13px;">Any project using this audit type/language will fall back to the bundled default template (if available) the next time a report is generated.</p>
+  <p style="color:#b32d2e; font-size:13px;">Any project using this audit type/language will show "No template uploaded" the next time a report is generated, until a replacement is uploaded.</p>
   <form method="post">
     {% csrf_token %}
     <button class="btn" style="background:#b32d2e; border-color:#b32d2e;" type="submit">Delete permanently</button>

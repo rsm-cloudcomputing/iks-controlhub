@@ -640,6 +640,14 @@ def template_delete(request, pk):
     template = get_object_or_404(ReportTemplate, pk=pk)
     if request.method == "POST":
         name = template.name
+        # Explicitly remove files from disk -- Django doesn't do this
+        # automatically when a model row with FileFields is deleted, so
+        # without this the .docx and any generated preview PDF would be
+        # orphaned on disk forever.
+        if template.preview_pdf:
+            template.preview_pdf.delete(save=False)
+        if template.file:
+            template.file.delete(save=False)
         template.delete()
         messages.success(request, f'Template "{name}" deleted.')
         return redirect("template_list")
@@ -811,15 +819,10 @@ def download_report(request, pk):
     project = get_object_or_404(Project, pk=pk)
 
     template = resolve_template(project)
-    if template:
-        template_path = template.file.path
-    else:
-        # Fall back to the bundled default templates if nothing's been uploaded yet.
-        template_filename = f"report_template_{project.language}.docx"
-        template_path = os.path.join(settings.BASE_DIR, "report_templates", template_filename)
-        if not os.path.exists(template_path):
-            messages.error(request, f"No report template found for {project.get_audit_type_display()} / {project.get_language_display()}. Upload one on the Templates page.")
-            return redirect("project_detail", pk=pk)
+    if not template:
+        messages.error(request, f"No template uploaded for {project.get_audit_type_display()} / {project.get_language_display()}. Upload one on the Templates page.")
+        return redirect("project_detail", pk=pk)
+    template_path = template.file.path
 
     buffer = generate_report(project, template_path)
     filename = f"{project.customer_name.replace(' ', '_')}_{project.audit_type}_{project.report_kind}_report.docx"

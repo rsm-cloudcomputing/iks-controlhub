@@ -31,15 +31,30 @@
   }
   .app { display: flex; min-height: 100vh; }
 
-  .sidebar { width: 220px; background: var(--wp-sidebar); color: #f0f0f1; flex-shrink: 0; padding: 0 0 20px; }
+  .sidebar { width: 220px; background: var(--wp-sidebar); color: #f0f0f1; flex-shrink: 0; padding: 0 0 20px; transition: width 0.15s ease; overflow: hidden; }
   .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 18px 16px; border-bottom: 1px solid #2c3338; margin-bottom: 8px; }
-  .sidebar-brand .logo { width: 28px; height: 28px; background: var(--wp-blue); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #fff; }
+  .sidebar-brand .logo { width: 28px; height: 28px; background: var(--wp-blue); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #fff; flex-shrink: 0; }
   .sidebar-brand .name { font-size: 14px; font-weight: 600; color: #fff; }
   .sidebar-brand .tag { font-size: 10.5px; color: #a7aaad; display: block; margin-top: 1px; }
 
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; color: #c3c4c7; text-decoration: none; font-size: 13.5px; cursor: pointer; border-left: 3px solid transparent; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; color: #c3c4c7; text-decoration: none; font-size: 13.5px; cursor: pointer; border-left: 3px solid transparent; white-space: nowrap; }
   .nav-item:hover { background: var(--wp-sidebar-hover); color: #fff; }
   .nav-item.active { background: var(--wp-sidebar-hover); color: #fff; border-left-color: var(--wp-blue); font-weight: 600; }
+
+  /* Collapsed state: icon-only sidebar, more room for content */
+  body.sidebar-collapsed .sidebar { width: 52px; }
+  body.sidebar-collapsed .sidebar-brand .name,
+  body.sidebar-collapsed .sidebar-brand .tag,
+  body.sidebar-collapsed .nav-item .nav-label,
+  body.sidebar-collapsed .nav-user { display: none; }
+  body.sidebar-collapsed .sidebar-brand { justify-content: center; padding: 18px 0; }
+  body.sidebar-collapsed .nav-item { justify-content: center; padding: 9px 0; }
+
+  #sidebar-toggle-btn {
+    background: none; border: none; cursor: pointer; color: var(--wp-text-muted);
+    font-size: 16px; padding: 4px 8px; border-radius: 3px; line-height: 1;
+  }
+  #sidebar-toggle-btn:hover { background: #f0f0f1; color: var(--wp-text); }
   .nav-icon { width: 16px; text-align: center; font-size: 13px; }
   .nav-user { padding: 14px 16px; border-top: 1px solid #2c3338; margin-top: 12px; font-size: 12.5px; color: #a7aaad; }
   .nav-user a { color: #c3c4c7; text-decoration: none; }
@@ -125,7 +140,14 @@
 </style>
 </head>
 <body>
-<div class="app">
+<script>
+  // Applied as early as possible (right after <body> opens) to avoid a
+  // visible flash of the expanded sidebar before this runs.
+  if (localStorage.getItem('sidebarCollapsed') === '1') {
+    document.body.classList.add('sidebar-collapsed');
+  }
+</script>
+<div class="app" id="app-root">
   <div class="sidebar">
     <div class="sidebar-brand">
       <div class="logo">IK</div>
@@ -134,13 +156,13 @@
         <span class="tag">v1.0</span>
       </div>
     </div>
-    <a class="nav-item {% block nav_dashboard %}{% endblock %}" href="{% url 'project_list' %}"><span class="nav-icon">&#9634;</span> Dashboard</a>
-    <a class="nav-item {% block nav_templates %}{% endblock %}" href="{% url 'template_list' %}"><span class="nav-icon">&#9636;</span> Templates</a>
-    <a class="nav-item {% block nav_placeholders %}{% endblock %}" href="{% url 'placeholder_list' %}"><span class="nav-icon">{ }</span> Placeholders</a>
-    <a class="nav-item {% block nav_phrases %}{% endblock %}" href="{% url 'standard_phrase_list' %}"><span class="nav-icon">&#10077;</span> Standard Phrases</a>
-    <a class="nav-item {% block nav_reference %}{% endblock %}" href="{% url 'reference_report_list' %}"><span class="nav-icon">&#128218;</span> Reference Reports</a>
+    <a class="nav-item {% block nav_dashboard %}{% endblock %}" href="{% url 'project_list' %}"><span class="nav-icon">&#9634;</span><span class="nav-label"> Dashboard</span></a>
+    <a class="nav-item {% block nav_templates %}{% endblock %}" href="{% url 'template_list' %}"><span class="nav-icon">&#9636;</span><span class="nav-label"> Templates</span></a>
+    <a class="nav-item {% block nav_placeholders %}{% endblock %}" href="{% url 'placeholder_list' %}"><span class="nav-icon">{ }</span><span class="nav-label"> Placeholders</span></a>
+    <a class="nav-item {% block nav_phrases %}{% endblock %}" href="{% url 'standard_phrase_list' %}"><span class="nav-icon">&#10077;</span><span class="nav-label"> Standard Phrases</span></a>
+    <a class="nav-item {% block nav_reference %}{% endblock %}" href="{% url 'reference_report_list' %}"><span class="nav-icon">&#128218;</span><span class="nav-label"> Reference Reports</span></a>
     {% if user.is_staff %}
-    <a class="nav-item" href="/admin/"><span class="nav-icon">&#9881;</span> Admin</a>
+    <a class="nav-item" href="/admin/"><span class="nav-icon">&#9881;</span><span class="nav-label"> Admin</span></a>
     {% endif %}
     {% if user.is_authenticated %}
     <div class="nav-user">
@@ -155,9 +177,12 @@
 
   <div class="main">
     <div class="topbar">
-      <div>
-        <h1>{% block page_title %}Dashboard{% endblock %}</h1>
-        {% block page_sub %}{% endblock %}
+      <div style="display:flex; align-items:center; gap:10px;">
+        <button id="sidebar-toggle-btn" type="button" title="Hide/show sidebar">&#9776;</button>
+        <div>
+          <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+          {% block page_sub %}{% endblock %}
+        </div>
       </div>
       {% block page_actions %}{% endblock %}
     </div>
@@ -276,6 +301,16 @@ function highlightSearchMatch(cell, query) {
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp('(' + escaped + ')', 'ig');
   cell.innerHTML = original.replace(regex, '<mark>$1</mark>');
+}
+
+// Sidebar collapse toggle -- persisted so it stays collapsed across page
+// navigations (this is a traditional multi-page app, not an SPA).
+const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+if (sidebarToggleBtn) {
+  sidebarToggleBtn.addEventListener('click', () => {
+    const collapsed = document.body.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
+  });
 }
 </script>
 <style>
