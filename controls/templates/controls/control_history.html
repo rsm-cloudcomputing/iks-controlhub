@@ -1,0 +1,43 @@
+{% extends "controls/base.html" %}
+{% load controls_extras %}
+{% block page_title %}{{ control.control_id }} — change history{% endblock %}
+{% block page_sub %}<div class="sub">{{ control.project.customer_name }}</div>{% endblock %}
+{% block page_actions %}<a class="btn secondary" href="{% url 'project_detail' control.project.pk %}">&larr; Back to project</a>{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Every import and edit for this control, newest first</h2>
+  {% for entry in entries %}
+  <div style="border:1px solid var(--wp-border); border-radius:4px; padding:12px 14px; margin-bottom:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <div>
+        {% if entry.event_type == 'import' %}
+          <span class="badge submitted">Imported</span>
+        {% elif entry.event_type == 'delete' %}
+          <span class="badge missing">Import deleted</span>
+        {% else %}
+          <span class="badge pending">Edited</span>
+        {% endif %}
+        <span style="font-size:12.5px; color:var(--wp-text-muted); margin-left:6px;">
+          {{ entry.timestamp|date:"d M Y, H:i" }} by {{ entry.actor.username|default:"—" }}
+          {% if entry.source_file %} &middot; {{ entry.source_file }}{% endif %}
+        </span>
+      </div>
+    </div>
+
+    {% if entry.diff %}
+      {% for field, change in entry.diff.items %}
+      <div style="margin-bottom:8px; font-size:12.5px;">
+        <div style="font-weight:600; color:var(--wp-text-muted); text-transform:uppercase; font-size:11px; margin-bottom:3px;">{{ field }}</div>
+        <div style="background:#f6f7f7; padding:8px 10px; border-radius:3px; line-height:1.6;">{{ change.old|word_diff:change.new }}</div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div style="font-size:12.5px; color:var(--wp-text-muted);">No field changes recorded for this event.</div>
+    {% endif %}
+  </div>
+  {% empty %}
+  <p>No history yet for this control.</p>
+  {% endfor %}
+</div>
+{% endblock %}

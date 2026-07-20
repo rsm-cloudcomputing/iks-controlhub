@@ -1,0 +1,14 @@
+{% extends "controls/base.html" %}
+{% block page_title %}Edit {{ submission.control.control_id }}{% endblock %}
+{% block page_sub %}<div class="sub">Editing the imported text directly — copy it back into the original working paper yourself if needed</div>{% endblock %}
+{% block page_actions %}<a class="btn secondary" href="{% url 'project_detail' submission.control.project.pk %}">&larr; Back to project</a>{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:640px;">
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn" type="submit">Save changes</button>
+  </form>
+</div>
+{% endblock %}

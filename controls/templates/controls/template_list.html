@@ -1,0 +1,68 @@
+{% extends "controls/base.html" %}
+{% block nav_templates %}active{% endblock %}
+{% block page_title %}Report templates{% endblock %}
+{% block page_sub %}<div class="sub">Upload Word templates for SOC 2, PS 951, PS 3000 — one per audit type + language</div>{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Upload a new template</h2>
+  <div style="overflow-x:auto;">
+    <form method="post" action="{% url 'template_upload' %}" enctype="multipart/form-data" style="display:flex; flex-wrap:nowrap; gap:12px; align-items:flex-end;">
+      {% csrf_token %}
+      <div style="flex:2; min-width:150px;">{{ form.name.label_tag }}{{ form.name }}</div>
+      <div style="flex:1; min-width:110px;">{{ form.audit_type.label_tag }}{{ form.audit_type }}</div>
+      <div style="flex:1; min-width:100px;">{{ form.language.label_tag }}{{ form.language }}</div>
+      <div style="flex:1; min-width:180px;">{{ form.file.label_tag }}{{ form.file }}</div>
+      <div style="margin-bottom:14px; white-space:nowrap;"><button class="btn" type="submit">Upload</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Templates</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Audit type</th><th>Language</th><th>Active</th><th>Uploaded by</th><th>Uploaded</th><th></th></tr></thead>
+    <tbody>
+      {% for t in templates %}
+      <tr>
+        <td>{{ t.name }}</td>
+        <td>{{ t.get_audit_type_display }}</td>
+        <td>{{ t.get_language_display }}</td>
+        <td><input type="checkbox" class="active-toggle" data-template-id="{{ t.pk }}" {% if t.is_active %}checked{% endif %}></td>
+        <td>{{ t.uploaded_by.username|default:"—" }}</td>
+        <td>{{ t.uploaded_at|date:"d M Y, H:i" }}</td>
+        <td style="white-space:nowrap;">
+          <a href="{% url 'template_preview' t.pk %}" target="_blank">Preview</a> &middot;
+          <a href="{% url 'template_placeholders' t.pk %}">Placeholders</a> &middot;
+          <a href="{% url 'template_update' t.pk %}">Edit</a> &middot;
+          <a href="{% url 'template_delete' t.pk %}" style="color:#b32d2e;">Delete</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7">No templates uploaded yet. The app falls back to the bundled default EN/DE templates until you upload your own.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  document.querySelectorAll('.active-toggle').forEach((cb) => {
+    cb.addEventListener('change', async () => {
+      const id = cb.dataset.templateId;
+      try {
+        const resp = await fetch(`/templates/${id}/toggle-active/`, {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+          },
+        });
+        if (!resp.ok) throw new Error('Toggle failed');
+      } catch (err) {
+        cb.checked = !cb.checked; // revert on failure
+        alert('Could not update — please try again.');
+      }
+    });
+  });
+</script>
+{% endblock %}

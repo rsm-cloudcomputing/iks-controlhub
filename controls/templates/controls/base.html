@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{% block title %}IKS ControlHub{% endblock %}</title>
+<style>
+  :root {
+    --wp-sidebar: #1d2327;
+    --wp-sidebar-hover: #2c3338;
+    --wp-blue: #2271b1;
+    --wp-blue-dark: #135e96;
+    --wp-bg: #f0f0f1;
+    --wp-card: #ffffff;
+    --wp-border: #dcdcde;
+    --wp-text: #1d2327;
+    --wp-text-muted: #646970;
+    --wp-green: #00a32a;
+    --wp-green-bg: #edfaef;
+    --wp-amber: #b45a00;
+    --wp-amber-bg: #fcf3e3;
+    --wp-red: #b32d2e;
+    --wp-red-bg: #fcedee;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--wp-bg);
+    color: var(--wp-text);
+    font-size: 14px;
+  }
+  .app { display: flex; min-height: 100vh; }
+
+  .sidebar { width: 220px; background: var(--wp-sidebar); color: #f0f0f1; flex-shrink: 0; padding: 0 0 20px; }
+  .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 18px 16px; border-bottom: 1px solid #2c3338; margin-bottom: 8px; }
+  .sidebar-brand .logo { width: 28px; height: 28px; background: var(--wp-blue); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: #fff; }
+  .sidebar-brand .name { font-size: 14px; font-weight: 600; color: #fff; }
+  .sidebar-brand .tag { font-size: 10.5px; color: #a7aaad; display: block; margin-top: 1px; }
+
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; color: #c3c4c7; text-decoration: none; font-size: 13.5px; cursor: pointer; border-left: 3px solid transparent; }
+  .nav-item:hover { background: var(--wp-sidebar-hover); color: #fff; }
+  .nav-item.active { background: var(--wp-sidebar-hover); color: #fff; border-left-color: var(--wp-blue); font-weight: 600; }
+  .nav-icon { width: 16px; text-align: center; font-size: 13px; }
+  .nav-user { padding: 14px 16px; border-top: 1px solid #2c3338; margin-top: 12px; font-size: 12.5px; color: #a7aaad; }
+  .nav-user a { color: #c3c4c7; text-decoration: none; }
+  .nav-user a:hover { color: #fff; }
+
+  .main { flex: 1; min-width: 0; }
+  .topbar { background: #fff; border-bottom: 1px solid var(--wp-border); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; }
+  .topbar h1 { font-size: 20px; margin: 0; font-weight: 600; }
+  .topbar .sub { font-size: 12.5px; color: var(--wp-text-muted); margin-top: 2px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 3px; border: 1px solid var(--wp-blue); background: var(--wp-blue); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .btn:hover { background: var(--wp-blue-dark); border-color: var(--wp-blue-dark); color: #fff; }
+  .btn.secondary { background: #f6f7f7; color: var(--wp-text); border-color: var(--wp-border); }
+  .btn.secondary:hover { background: #f0f0f1; color: var(--wp-text); }
+
+  .content { padding: 24px 28px; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: var(--wp-card); border: 1px solid var(--wp-border); border-radius: 4px; padding: 16px 18px; }
+  .stat-card .label { font-size: 12px; color: var(--wp-text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+  .stat-card .value { font-size: 28px; font-weight: 700; margin-top: 6px; }
+  .stat-card .delta { font-size: 12px; margin-top: 4px; color: var(--wp-text-muted); }
+
+  .card { background: var(--wp-card); border: 1px solid var(--wp-border); border-radius: 4px; padding: 18px 20px; margin-bottom: 20px; }
+  .card h2 { font-size: 15px; margin: 0 0 14px; font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--wp-text-muted); font-weight: 600; padding: 10px 12px; border-bottom: 1px solid var(--wp-border); }
+  tbody tr { border-bottom: 1px solid #f0f0f1; }
+  tbody tr:hover { background: #f6f7f7; }
+  td { padding: 11px 12px; vertical-align: middle; font-size: 13.5px; overflow-wrap: break-word; word-break: break-word; }
+  .cid { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 12.5px; color: var(--wp-text-muted); }
+
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 10px; }
+  .badge.submitted { background: var(--wp-green-bg); color: var(--wp-green); }
+  .badge.pending { background: var(--wp-amber-bg); color: var(--wp-amber); }
+  .badge.missing { background: var(--wp-red-bg); color: var(--wp-red); }
+  .badge.match { background: var(--wp-green-bg); color: var(--wp-green); }
+  .badge.mismatch { background: var(--wp-amber-bg); color: var(--wp-amber); }
+  .badge.no_submission { background: #f0f0f1; color: var(--wp-text-muted); }
+  .filter-pill { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; text-decoration: none; color: var(--wp-text-muted); border: 1px solid var(--wp-border); margin-right: 6px; }
+  .filter-pill.active { background: var(--wp-blue); color: #fff; border-color: var(--wp-blue); }
+  .btn-link { background: none; border: none; color: var(--wp-blue); cursor: pointer; font-size: 12.5px; padding: 0; text-decoration: underline; }
+  tr.row-reviewed-ok td { background: var(--wp-green-bg) !important; }
+
+  /* Reliable hover tooltip (native title="" attributes are inconsistent across browsers) */
+  .info-tip { position: relative; display: inline-block; cursor: help; }
+  .info-tip .info-tip-bubble {
+    visibility: hidden; opacity: 0;
+    position: absolute; z-index: 50; bottom: 130%; left: 50%; transform: translateX(-50%);
+    width: 280px; background: var(--wp-sidebar); color: #fff; text-align: left;
+    padding: 10px 12px; border-radius: 6px; font-size: 12px; font-weight: 400; line-height: 1.5;
+    text-transform: none; letter-spacing: normal;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25); transition: opacity 0.12s ease;
+  }
+  .info-tip .info-tip-bubble ul { margin: 4px 0 0; padding-left: 16px; }
+  .info-tip .info-tip-bubble li { margin-bottom: 4px; }
+  .info-tip .info-tip-bubble::after {
+    content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px;
+    border-width: 5px; border-style: solid; border-color: var(--wp-sidebar) transparent transparent transparent;
+  }
+  .info-tip:hover .info-tip-bubble { visibility: visible; opacity: 1; }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .messages { list-style: none; padding: 0; margin: 0 0 16px; }
+  .messages li { padding: 10px 14px; border-radius: 4px; margin-bottom: 8px; font-size: 13.5px; }
+  .messages .success { background: var(--wp-green-bg); color: var(--wp-green); }
+  .messages .error { background: var(--wp-red-bg); color: var(--wp-red); }
+  .messages .warning { background: var(--wp-amber-bg); color: var(--wp-amber); }
+
+  .dropzone { display: block; border: 2px dashed #c3c4c7; border-radius: 6px; padding: 24px; text-align: center; color: var(--wp-text-muted); font-size: 13.5px; cursor: pointer; position: relative; }
+  .dropzone.dragover { border-color: var(--wp-blue); background: #f0f6fb; }
+
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  input[type=text], input[type=date], textarea, select {
+    width: 100%; padding: 7px 10px; border: 1px solid var(--wp-border); border-radius: 3px; margin-bottom: 14px; font-size: 13.5px;
+  }
+  input[type=file] {
+    width: 100%; max-width: 100%; padding: 5px 0; margin-bottom: 14px; font-size: 12.5px; box-sizing: border-box;
+  }
+  .helptext { font-size: 12px; color: var(--wp-text-muted); margin-top: -10px; margin-bottom: 12px; }
+  ul.errorlist { color: var(--wp-red); font-size: 12px; padding-left: 0; list-style: none; margin: -8px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">IK</div>
+      <div>
+        <div class="name">IKS ControlHub</div>
+        <span class="tag">v1.0</span>
+      </div>
+    </div>
+    <a class="nav-item {% block nav_dashboard %}{% endblock %}" href="{% url 'project_list' %}"><span class="nav-icon">&#9634;</span> Dashboard</a>
+    <a class="nav-item {% block nav_templates %}{% endblock %}" href="{% url 'template_list' %}"><span class="nav-icon">&#9636;</span> Templates</a>
+    <a class="nav-item {% block nav_placeholders %}{% endblock %}" href="{% url 'placeholder_list' %}"><span class="nav-icon">{ }</span> Placeholders</a>
+    <a class="nav-item {% block nav_phrases %}{% endblock %}" href="{% url 'standard_phrase_list' %}"><span class="nav-icon">&#10077;</span> Standard Phrases</a>
+    <a class="nav-item {% block nav_reference %}{% endblock %}" href="{% url 'reference_report_list' %}"><span class="nav-icon">&#128218;</span> Reference Reports</a>
+    {% if user.is_staff %}
+    <a class="nav-item" href="/admin/"><span class="nav-icon">&#9881;</span> Admin</a>
+    {% endif %}
+    {% if user.is_authenticated %}
+    <div class="nav-user">
+      Signed in as <strong style="color:#fff;">{{ user.username }}</strong><br>
+      <a href="{% url 'logout' %}">Log out</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+        {% block page_sub %}{% endblock %}
+      </div>
+      {% block page_actions %}{% endblock %}
+    </div>
+    <div class="content">
+      {% if messages %}
+      <ul class="messages" id="top-messages">
+        {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+<script>
+// Forms tagged with data-section="..." (e.g. Excel import, working paper
+// upload, bulk control actions) submit normally -- full page reload, since
+// the resulting data changes (new rows, deleted rows, etc.) are non-trivial
+// to patch in with JS alone. But instead of leaving the confirmation message
+// stranded at the top of the page and losing scroll position, we remember
+// where we were and which section triggered the action, then on the next
+// page load restore the scroll position and move the message down next to
+// that section instead of the page top.
+document.addEventListener('submit', (e) => {
+  const section = e.target.dataset && e.target.dataset.section;
+  if (section) {
+    sessionStorage.setItem('pending_section_message', JSON.stringify({ y: window.scrollY, section }));
+  }
+}, true);
+
+document.addEventListener('DOMContentLoaded', () => {
+  const raw = sessionStorage.getItem('pending_section_message');
+  if (!raw) return;
+  sessionStorage.removeItem('pending_section_message');
+
+  let payload;
+  try { payload = JSON.parse(raw); } catch (err) { return; }
+  const { y, section } = payload;
+
+  const topMessages = document.getElementById('top-messages');
+  const target = document.getElementById(section);
+
+  if (topMessages && target) {
+    const moved = topMessages.cloneNode(true);
+    moved.removeAttribute('id');
+    moved.style.margin = '0 0 14px';
+    // Insert right after the section's <h2>, so it reads as "status for this section"
+    const heading = target.querySelector('h2');
+    if (heading && heading.nextSibling) {
+      heading.parentNode.insertBefore(moved, heading.nextSibling);
+    } else {
+      target.insertBefore(moved, target.firstChild);
+    }
+    topMessages.remove();
+  }
+
+  // Restore scroll position instantly (no smooth animation, no visible jump-then-jump-back)
+  window.scrollTo(0, y);
+});
+</script>
+</body>
+</html>

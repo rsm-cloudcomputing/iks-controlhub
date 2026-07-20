@@ -1,0 +1,17 @@
+{% extends "controls/base.html" %}
+{% block nav_templates %}active{% endblock %}
+{% block page_title %}Edit template{% endblock %}
+{% block page_sub %}<div class="sub">{{ template.name }}</div>{% endblock %}
+{% block page_actions %}<a class="btn secondary" href="{% url 'template_list' %}">&larr; Back to templates</a>{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:480px;">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <p style="font-size:12px; color:var(--wp-text-muted); margin-top:-10px;">Leave "File" empty to keep the currently uploaded file — only choose a new one to replace it.</p>
+    <button class="btn" type="submit">Save changes</button>
+    <a class="btn secondary" href="{% url 'template_list' %}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

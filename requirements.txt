@@ -1,0 +1,19 @@
+Django==6.0.7
+docxtpl==0.20.2
+openpyxl==3.1.5
+psycopg2-binary==2.9.12
+python-docx==1.2.0
+python-dotenv==1.2.2
+gunicorn==26.0.0
+whitenoise==6.12.0
+
+# Optional: LibreOffice-free fallback for template PDF preview (see services.py).
+# Needs Pango/cairo system libs too (much lighter than LibreOffice) --
+# `brew install pango` on macOS, `apt install libpango-1.0-0 libpangocairo-1.0-0
+# libgdk-pixbuf2.0-0` on Linux. Safe to remove these two lines if you don't
+# want the extra dependency -- the app works fine without them, LibreOffice
+# (if present) is still tried first, and the Preview button just shows its
+# graceful fallback message if neither is available.
+mammoth==1.12.0
+weasyprint==69.0
+diff-match-patch==20230430

@@ -1,0 +1,13 @@
+{% extends "controls/base.html" %}
+{% block nav_reference %}active{% endblock %}
+{% block page_title %}Delete reference report{% endblock %}
+{% block content %}
+<div class="card" style="max-width:480px;">
+  <p>Delete <strong>{{ report.name }}</strong> and its {{ report.entries.count }} parsed entries?</p>
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn" style="background:#b32d2e; border-color:#b32d2e;" type="submit">Delete permanently</button>
+    <a class="btn secondary" href="{% url 'reference_report_list' %}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

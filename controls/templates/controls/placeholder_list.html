@@ -1,0 +1,71 @@
+{% extends "controls/base.html" %}
+{% block nav_placeholders %}active{% endblock %}
+{% block page_title %}Placeholder catalog{% endblock %}
+{% block page_sub %}<div class="sub">Every placeholder available in report templates, categorized by section</div>{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Add a custom placeholder</h2>
+  <p style="font-size:12.5px; color:var(--wp-text-muted); margin-top:-8px;">Custom placeholders are filled in per-project on the project page, and available in templates as <code>&#123;&#123; your_key &#125;&#125;</code> — same syntax as built-in placeholders.</p>
+  <form method="post" action="{% url 'placeholder_create' %}" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+    {% csrf_token %}
+    <div style="flex:1; min-width:160px;">{{ form.key.label_tag }}{{ form.key }}</div>
+    <div style="flex:1; min-width:140px;">{{ form.section.label_tag }}{{ form.section }}</div>
+    <div style="flex:1; min-width:120px;">{{ form.field_type.label_tag }}{{ form.field_type }}</div>
+    <div style="flex:2; min-width:220px;">{{ form.description.label_tag }}{{ form.description }}</div>
+    <div style="margin-bottom:14px;"><button class="btn secondary" type="submit">+ Add placeholder</button></div>
+  </form>
+</div>
+
+{% for section, placeholders in by_section.items %}
+<div class="card">
+  <h2>{{ section }}</h2>
+  <table>
+    <thead><tr><th>Placeholder</th><th>Type</th><th>Description</th><th style="width:1%; white-space:nowrap;"></th></tr></thead>
+    <tbody>
+      {% for ph in placeholders %}
+      <tr id="ph-row-{{ ph.pk }}">
+        <td class="cid">&#123;&#123; {{ ph.key }} &#125;&#125;</td>
+        <td>{% if ph.field_type == 'date' %}<span class="badge pending">Date (auto EN/DE)</span>{% else %}<span class="badge no_submission">Text</span>{% endif %}</td>
+        <td>{{ ph.description|default:"—" }}</td>
+        <td style="white-space:nowrap;">
+          <a href="#" class="btn-link" onclick="document.getElementById('edit-form-{{ ph.pk }}').style.display='table-row'; this.closest('tr').style.display='none'; return false;">Edit</a>
+          &middot;
+          <form method="post" action="{% url 'placeholder_delete' ph.pk %}" style="display:inline;" onsubmit="return confirm('Delete placeholder &quot;{{ ph.key }}&quot;? This cannot be undone.');">
+            {% csrf_token %}
+            <button type="submit" class="btn-link" style="color:#b32d2e;">Delete</button>
+          </form>
+        </td>
+      </tr>
+      <tr id="edit-form-{{ ph.pk }}" style="display:none; background:#f6f7f7;">
+        <td colspan="4">
+          <form method="post" action="{% url 'placeholder_update' ph.pk %}" style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; padding:8px 0;">
+            {% csrf_token %}
+            <div style="flex:1; min-width:140px;"><label>Key</label><input type="text" name="key" value="{{ ph.key }}"></div>
+            <div style="flex:1; min-width:140px;"><label>Section</label>
+              <select name="section">
+                {% for val, label in ph.SECTION_CHOICES %}
+                <option value="{{ val }}" {% if ph.section == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div style="flex:1; min-width:110px;"><label>Type</label>
+              <select name="field_type">
+                {% for val, label in ph.FIELD_TYPE_CHOICES %}
+                <option value="{{ val }}" {% if ph.field_type == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div style="flex:2; min-width:200px;"><label>Description</label><input type="text" name="description" value="{{ ph.description }}"></div>
+            <div style="margin-bottom:14px;"><button class="btn secondary" type="submit">Save</button></div>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% empty %}
+<div class="card">No placeholders yet — run <code>python manage.py seed_placeholders</code> to load the built-in catalog.</div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,42 @@
+# Render Blueprint spec. Use via "New +" -> "Blueprint" in the Render
+# dashboard, pointing at this repo -- it reads this file automatically.
+databases:
+  - name: iks-controlhub-db
+    databaseName: iks_controlhub
+    plan: free  # bump this for production use
+
+services:
+  - type: web
+    name: iks-controlhub
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter  # free tier works for testing but sleeps when idle
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: DB_ENGINE
+        value: "postgres"
+      - key: DB_NAME
+        fromDatabase:
+          name: iks-controlhub-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: iks-controlhub-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: iks-controlhub-db
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: iks-controlhub-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: iks-controlhub-db
+          property: port

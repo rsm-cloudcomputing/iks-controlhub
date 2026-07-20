@@ -1,0 +1,13 @@
+{% extends "controls/base.html" %}
+{% block page_title %}Delete project{% endblock %}
+{% block content %}
+<div class="card" style="max-width:480px;">
+  <p>Are you sure you want to delete <strong>{{ project.customer_name }}</strong>?</p>
+  <p style="color:#b32d2e; font-size:13px;">This permanently deletes all {{ project.controls.count }} control(s) and their submitted working papers for this project. This cannot be undone.</p>
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn" style="background:#b32d2e; border-color:#b32d2e;" type="submit">Delete permanently</button>
+    <a class="btn secondary" href="{% url 'project_detail' project.pk %}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

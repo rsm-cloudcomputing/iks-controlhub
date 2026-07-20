@@ -1,0 +1,104 @@
+{% extends "controls/base.html" %}
+{% block nav_reference %}active{% endblock %}
+{% block page_title %}Reference reports{% endblock %}
+{% block page_sub %}<div class="sub">Old/finished reports imported as reference material for reviewers — not tied to any project</div>{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Imported reports</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Controls found</th><th>Uploaded by</th><th>Uploaded</th><th></th></tr></thead>
+    <tbody>
+      {% for r in reports %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td>{{ r.entries.count }}</td>
+        <td>{{ r.uploaded_by.username|default:"—" }}</td>
+        <td>{{ r.uploaded_at|date:"d M Y, H:i" }}</td>
+        <td>
+          <a href="{% url 'reference_report_detail' r.pk %}">View</a> &middot;
+          <form method="post" action="{% url 'reference_report_delete' r.pk %}" style="display:inline;" onsubmit="return confirm('Delete this reference report?');">
+            {% csrf_token %}
+            <button type="submit" class="btn-link" style="color:#b32d2e;">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5">No reference reports imported yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Import an old report</h2>
+  <p style="font-size:12.5px; color:var(--wp-text-muted); margin-top:-8px;">Looks for a results table with a "Result of test" / "Testergebnis der Kontrolle" column on the right, and a "Tests performed by RSM Ebner &amp; Stolz" / "Durch RSM Ebner Stolz durchgeführte Tests" column just to its left.</p>
+  <form method="post" action="{% url 'reference_report_upload' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <label class="dropzone" for="ref-input" id="ref-dropzone">
+      <span id="ref-dropzone-text">Drag and drop an old report (.docx) here, or click to browse.</span>
+      <input type="file" name="file" id="ref-input" accept=".docx" style="position:absolute; width:1px; height:1px; opacity:0; overflow:hidden;" required>
+    </label>
+    <div style="margin-top:10px;"><button class="btn secondary" type="submit">Import</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Search all imported entries ({{ all_entries|length }})</h2>
+  <div style="margin-bottom:14px;">
+    <input type="text" id="entry-search" placeholder="Search Control ID, Kontrollbeschreibung, or Test performed..." style="max-width:420px; margin-bottom:0;">
+  </div>
+  <table style="table-layout:fixed; width:100%;">
+    <thead><tr>
+      <th style="width:10%;">Control ID</th>
+      <th style="width:35%;">Kontrollbeschreibung</th>
+      <th style="width:35%;">Test performed</th>
+      <th style="width:20%;">Report</th>
+    </tr></thead>
+    <tbody>
+      {% for e in all_entries %}
+      <tr class="entry-row">
+        <td class="cid">{{ e.control_id|default:"—" }}</td>
+        <td class="kb-cell" style="font-size:12px;">{{ e.kontrollbeschreibung }}</td>
+        <td class="tp-cell" style="font-size:12px; white-space:pre-line;">{{ e.test_performed }}</td>
+        <td class="report-cell" style="font-size:12px;"><a href="{% url 'reference_report_detail' e.reference_report.pk %}">{{ e.reference_report.name }}</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4">No entries imported yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const zone = document.getElementById('ref-dropzone');
+  const input = document.getElementById('ref-input');
+  const textEl = document.getElementById('ref-dropzone-text');
+  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) { input.files = e.dataTransfer.files; textEl.textContent = input.files[0].name + ' — click "Import" below.'; }
+  });
+  input.addEventListener('change', () => {
+    if (input.files.length) textEl.textContent = input.files[0].name + ' — click "Import" below.';
+  });
+
+  // Real-time search across Report, Control ID, Kontrollbeschreibung, and Test performed
+  const entrySearch = document.getElementById('entry-search');
+  if (entrySearch) {
+    entrySearch.addEventListener('input', () => {
+      const query = entrySearch.value.trim().toLowerCase();
+      document.querySelectorAll('tr.entry-row').forEach((row) => {
+        const report = row.querySelector('.report-cell')?.textContent.toLowerCase() || '';
+        const controlId = row.querySelector('.cid')?.textContent.toLowerCase() || '';
+        const kb = row.querySelector('.kb-cell')?.textContent.toLowerCase() || '';
+        const tp = row.querySelector('.tp-cell')?.textContent.toLowerCase() || '';
+        const matches = !query || report.includes(query) || controlId.includes(query) || kb.includes(query) || tp.includes(query);
+        row.style.display = matches ? '' : 'none';
+      });
+    });
+  }
+</script>
+{% endblock %}

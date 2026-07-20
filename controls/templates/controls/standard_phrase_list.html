@@ -1,0 +1,57 @@
+{% extends "controls/base.html" %}
+{% block nav_phrases %}active{% endblock %}
+{% block page_title %}Standard phrases{% endblock %}
+{% block page_sub %}<div class="sub">Expected wording in section 5.1 test activities, checked per language on import</div>{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Add a standard phrase</h2>
+  <form method="post" action="{% url 'standard_phrase_create' %}" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+    {% csrf_token %}
+    <div style="flex:1; min-width:100px;">{{ form.language.label_tag }}{{ form.language }}</div>
+    <div style="flex:3; min-width:320px;">{{ form.phrase.label_tag }}{{ form.phrase }}</div>
+    <div style="margin-bottom:14px;"><button class="btn secondary" type="submit">+ Add phrase</button></div>
+  </form>
+  <p style="font-size:12px; color:var(--wp-text-muted); margin-top:-6px;">Write the phrase exactly as you want it matched (case-insensitive regex) — e.g. <code>Discussion with the process owner to .*</code> or <code>Review of .* with regard to the following aspects:</code></p>
+</div>
+
+{% for language, phrases in by_language.items %}
+<div class="card">
+  <h2>{{ language }}</h2>
+  <table>
+    <thead><tr><th>Phrase</th><th style="width:1%; white-space:nowrap;"></th></tr></thead>
+    <tbody>
+      {% for p in phrases %}
+      <tr id="sp-row-{{ p.pk }}">
+        <td class="cid">{{ p.phrase }}</td>
+        <td style="white-space:nowrap;">
+          <a href="#" class="btn-link" onclick="document.getElementById('sp-edit-{{ p.pk }}').style.display='table-row'; this.closest('tr').style.display='none'; return false;">Edit</a>
+          &middot;
+          <form method="post" action="{% url 'standard_phrase_delete' p.pk %}" style="display:inline;" onsubmit="return confirm('Delete this phrase?');">
+            {% csrf_token %}
+            <button type="submit" class="btn-link" style="color:#b32d2e;">Delete</button>
+          </form>
+        </td>
+      </tr>
+      <tr id="sp-edit-{{ p.pk }}" style="display:none; background:#f6f7f7;">
+        <td colspan="2">
+          <form method="post" action="{% url 'standard_phrase_update' p.pk %}" style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; padding:8px 0;">
+            {% csrf_token %}
+            <div style="flex:1; min-width:100px;"><label>Language</label>
+              <select name="language">
+                {% for val, lbl in p.LANGUAGE_CHOICES %}<option value="{{ val }}" {% if p.language == val %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+              </select>
+            </div>
+            <div style="flex:3; min-width:320px;"><label>Phrase</label><input type="text" name="phrase" value="{{ p.phrase }}"></div>
+            <div style="margin-bottom:14px;"><button class="btn secondary" type="submit">Save</button></div>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="2">No phrases configured for this language yet — validation will pass automatically until you add some.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+{% endblock %}

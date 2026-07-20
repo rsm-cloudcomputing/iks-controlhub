@@ -1,0 +1,148 @@
+{% extends "controls/base.html" %}
+{% load controls_extras %}
+{% block page_title %}{% if is_edit %}Edit project{% else %}New project space{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:560px;">
+  <form method="post" id="project-main-form">
+    {% csrf_token %}
+
+    <label>{{ form.language.label }}</label>{{ form.language }}
+
+    <label>Audit standard <span style="color:var(--wp-text-muted); font-weight:400;">(&#123;&#123; report_kind &#125;&#125;)</span></label>{{ form.audit_type }}
+    <label>Report type <span style="color:var(--wp-text-muted); font-weight:400;">(&#123;&#123; audit_type &#125;&#125;)</span></label>{{ form.report_kind }}
+
+    {% if custom_placeholders %}
+    <p style="font-size:12px; color:var(--wp-text-muted); margin: 4px 0 8px;">Add a new placeholder on the <a href="{% url 'placeholder_list' %}">Placeholders</a> page and it appears here automatically.</p>
+    {% endif %}
+    {% for ph in custom_placeholders %}
+    <label>{{ ph.description|default:ph.key }} <span style="color:var(--wp-text-muted); font-weight:400;">(&#123;&#123; {{ ph.key }} &#125;&#125;)</span></label>
+    {% if ph.field_type == 'date' %}
+    <input type="date" name="extra__{{ ph.key }}" value="{{ project.extra_fields|get_item:ph.key }}">
+    {% else %}
+    <input type="text" name="extra__{{ ph.key }}" value="{{ project.extra_fields|get_item:ph.key }}">
+    {% endif %}
+    {% endfor %}
+
+    <label>{{ builtin_placeholders.report_date.description|default:"Report date" }} <span style="color:var(--wp-text-muted); font-weight:400;">(&#123;&#123; report_date &#125;&#125;)</span></label>{{ form.report_date }}
+
+    <label>When audit conducted <span style="color:var(--wp-text-muted); font-weight:400;">(&#123;&#123; audit_conducted_from_to &#125;&#125;)</span></label>
+    <div style="display:flex; gap:10px;">
+      <div style="flex:1;"><label style="font-size:11px; font-weight:400; color:var(--wp-text-muted);">From</label><input type="date" name="extra__audit_conducted_from" value="{{ project.extra_fields|get_item:'audit_conducted_from' }}"></div>
+      <div style="flex:1;"><label style="font-size:11px; font-weight:400; color:var(--wp-text-muted);">To</label><input type="date" name="extra__audit_conducted_to" value="{{ project.extra_fields|get_item:'audit_conducted_to' }}"></div>
+    </div>
+
+    {% for ph in custom_placeholders_after %}
+    <label>{{ ph.description|default:ph.key }} <span style="color:var(--wp-text-muted); font-weight:400;">(&#123;&#123; {{ ph.key }} &#125;&#125;)</span></label>
+    {% if ph.field_type == 'date' %}
+    <input type="date" name="extra__{{ ph.key }}" value="{{ project.extra_fields|get_item:ph.key }}">
+    {% else %}
+    <input type="text" name="extra__{{ ph.key }}" value="{{ project.extra_fields|get_item:ph.key }}">
+    {% endif %}
+    {% endfor %}
+
+    {% if form.errors %}<p style="color:#b32d2e; font-size:13px;">{{ form.errors }}</p>{% endif %}
+
+    {% if not is_edit %}
+    <div id="audit-periods-section" style="display:none; border-top:1px solid var(--wp-border); padding-top:14px; margin-top:4px;">
+      <label>Audit period(s) <span style="font-weight:400; color:var(--wp-text-muted);">(Type 2 — add another if the audit was split into non-continuous periods)</span></label>
+      <div id="period-rows"></div>
+      <button type="button" class="btn secondary" id="add-period-btn" style="margin-top:6px;">+ Add audit period</button>
+    </div>
+    {% endif %}
+
+    <div style="margin-top:16px;">
+      <button class="btn" type="submit">{% if is_edit %}Save changes{% else %}Create project{% endif %}</button>
+      {% if is_edit %}<a class="btn secondary" href="{% url 'project_detail' project.pk %}">Cancel</a>{% endif %}
+    </div>
+  </form>
+
+  {% if is_edit %}
+  <div id="edit-audit-periods-section" style="display:none; border-top:1px solid var(--wp-border); padding-top:14px; margin-top:16px;">
+    <label>Audit period(s) <span style="font-weight:400; color:var(--wp-text-muted);">(Type 2 — add another if the audit was split into non-continuous periods)</span></label>
+    <span class="save-msg" id="report-kind-save-msg" style="display:none; color:#00a32a; font-size:11.5px;">&#10003; Report type saved</span>
+    {% for p in audit_periods %}
+    <div style="display:flex; gap:10px; align-items:center; padding:6px 0; border-bottom:1px solid var(--wp-border); font-size:13px;">
+      <div style="flex:1;">{{ p.start_date }} &ndash; {{ p.end_date }}</div>
+      <form method="post" action="{% url 'audit_period_delete' project.pk p.pk %}" onsubmit="return confirm('Remove this audit period?');">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'project_update' project.pk %}">
+        <button type="submit" class="btn-link" style="color:#b32d2e;">Remove</button>
+      </form>
+    </div>
+    {% empty %}
+    <p style="font-size:12.5px; color:var(--wp-text-muted);">No audit periods added yet.</p>
+    {% endfor %}
+    <form method="post" action="{% url 'audit_period_add' project.pk %}" style="display:flex; gap:10px; align-items:flex-end; margin-top:10px;">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{% url 'project_update' project.pk %}">
+      <div style="flex:1;"><label>From</label><input type="date" name="start_date" required></div>
+      <div style="flex:1;"><label>To</label><input type="date" name="end_date" required></div>
+      <div style="margin-bottom:14px;"><button class="btn secondary" type="submit">+ Add period</button></div>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<template id="period-row-template">
+  <div class="period-row" style="display:flex; gap:8px; align-items:flex-end; margin-bottom:8px;">
+    <div style="flex:1;"><label>From</label><input type="date" name="period_start[]"></div>
+    <div style="flex:1;"><label>To</label><input type="date" name="period_end[]"></div>
+    <div style="margin-bottom:14px;"><button type="button" class="btn-link remove-period" style="color:#b32d2e;">Remove</button></div>
+  </div>
+</template>
+
+<script>
+  const reportKindSelect = document.querySelector('#id_report_kind');
+  const isEdit = {% if is_edit %}true{% else %}false{% endif %};
+  const periodsSection = isEdit ? document.getElementById('edit-audit-periods-section') : document.getElementById('audit-periods-section');
+
+  function toggleSection() {
+    if (periodsSection) periodsSection.style.display = (reportKindSelect.value === 'type2') ? 'block' : 'none';
+  }
+  toggleSection();
+
+  {% if is_edit %}
+  // On the edit page, Report type changes save immediately (AJAX, no reload)
+  // -- otherwise, clicking "+ Add period" (a real form submit/reload) would
+  // see the OLD saved report_kind and hide the just-revealed period section again.
+  reportKindSelect.addEventListener('change', async () => {
+    toggleSection();
+    try {
+      const resp = await fetch("{% url 'project_update_field' project.pk %}", {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: 'field=report_kind&value=' + encodeURIComponent(reportKindSelect.value),
+      });
+      if (resp.ok) {
+        const msg = document.getElementById('report-kind-save-msg');
+        if (msg) {
+          msg.style.display = 'inline';
+          setTimeout(() => { msg.style.display = 'none'; }, 2000);
+        }
+      }
+    } catch (err) { /* non-fatal -- the main Save button still saves everything */ }
+  });
+  {% else %}
+  reportKindSelect.addEventListener('change', toggleSection);
+  {% endif %}
+
+  {% if not is_edit %}
+  const periodRows = document.getElementById('period-rows');
+  const template = document.getElementById('period-row-template');
+  document.getElementById('add-period-btn').addEventListener('click', () => {
+    const clone = template.content.cloneNode(true);
+    clone.querySelector('.remove-period').addEventListener('click', (e) => {
+      e.target.closest('.period-row').remove();
+    });
+    periodRows.appendChild(clone);
+  });
+  // Start with one row already visible for convenience
+  document.getElementById('add-period-btn').click();
+  {% endif %}
+</script>
+{% endblock %}

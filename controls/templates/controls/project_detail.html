@@ -1,0 +1,387 @@
+{% extends "controls/base.html" %}
+{% load controls_extras %}
+{% block page_title %}{{ project.customer_name }}{% endblock %}
+{% block page_sub %}<div class="sub">{{ project.get_audit_type_display }} &middot; {{ project.get_report_kind_display }} &middot; {{ project.get_language_display }} &middot; {{ project.report_date }} &middot; last updated {{ project.updated_at|date:"d M Y, H:i" }}{% if project.updated_by %} by {{ project.updated_by.username }}{% endif %}</div>{% endblock %}
+{% block page_actions %}
+<div style="display:flex; gap:8px;">
+<a class="btn secondary" href="{% url 'project_update' project.pk %}">Edit</a>
+<a class="btn secondary" style="color:#b32d2e; border-color:#f0c4c4;" href="{% url 'project_delete' project.pk %}">Delete</a>
+<a class="btn" href="{% url 'download_report' project.pk %}">&#8615; Generate report</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="stats-row">
+  <div class="stat-card"><div class="label">Total controls</div><div class="value">{{ stats.total }}</div></div>
+  <div class="stat-card"><div class="label">Submitted</div><div class="value" style="color:#00a32a;">{{ stats.submitted }}</div></div>
+  <div class="stat-card"><div class="label">Missing</div><div class="value" style="color:#b32d2e;">{{ stats.missing }}</div></div>
+  <div class="stat-card"><div class="label">Validation mismatch</div><div class="value" style="color:#b45a00;">{{ stats.mismatch }}</div></div>
+</div>
+
+<div class="card" id="section-excel">
+  <h2>1. Import IKS control list (Excel)</h2>
+  <form method="post" action="{% url 'upload_excel' project.pk %}" enctype="multipart/form-data" data-section="section-excel">
+    {% csrf_token %}
+    <label class="dropzone" for="excel-input" id="excel-dropzone">
+      <span id="excel-dropzone-text">Drag and drop the IKS.xlsx file here, or click to browse.</span>
+      <input type="file" name="file" id="excel-input" accept=".xlsx" style="position:absolute; width:1px; height:1px; opacity:0; overflow:hidden;" required>
+    </label>
+    <div style="margin-top:10px;"><button class="btn secondary" type="submit">Import controls</button></div>
+  </form>
+</div>
+
+<div class="card" id="section-workingpapers">
+  <h2>2. Upload Arbeitspapier working papers (Word)</h2>
+  <p style="font-size:12.5px; color:var(--wp-text-muted); margin-top:-8px;">Each upload is automatically validated against the IKS master list (Kontrollziel + Kontrollbeschreibung match).</p>
+  <form method="post" action="{% url 'upload_arbeitspapier' project.pk %}" enctype="multipart/form-data" data-section="section-workingpapers">
+    {% csrf_token %}
+    <label class="dropzone" for="wp-input" id="wp-dropzone">
+      <span id="wp-dropzone-text">Drag and drop one or more .docx working papers here, or click to browse.</span>
+      <input type="file" name="files" id="wp-input" accept=".docx" multiple style="position:absolute; width:1px; height:1px; opacity:0; overflow:hidden;" required>
+    </label>
+    <div style="margin-top:10px;"><button class="btn secondary" type="submit">Import working papers</button></div>
+  </form>
+</div>
+
+{% if project.is_type2 or custom_placeholders %}
+<p style="font-size:12px; color:var(--wp-text-muted); margin: -6px 0 6px;">Audit periods and project metadata (customer info, examination period, etc.) are managed on the <a href="{% url 'project_update' project.pk %}">Edit project</a> page.</p>
+{% endif %}
+
+<div class="card" id="section-controls">
+  <h2>Controls ({{ controls|length }})</h2>
+  <div style="margin-bottom:14px; display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+    <input type="text" id="control-search" placeholder="Search Control ID, Kontrollziel, or Test activities..." style="max-width:360px; margin-bottom:0;">
+    <div>
+      <a class="filter-pill {% if not current_validation_filter %}active{% endif %}" href="?">All</a>
+      <a class="filter-pill {% if current_validation_filter == 'mismatch' %}active{% endif %}" href="?validation=mismatch">Mismatch</a>
+      <a class="filter-pill {% if current_validation_filter == 'no_submission' %}active{% endif %}" href="?validation=no_submission">Not submitted</a>
+      <a class="filter-pill {% if current_validation_filter == 'finding' %}active{% endif %}" href="?validation=finding">Finding</a>
+    </div>
+  </div>
+  <form method="post" action="{% url 'controls_bulk_delete' project.pk %}" id="bulk-delete-form" data-section="section-controls">
+    {% csrf_token %}
+    <div style="margin-bottom:10px; display:flex; gap:8px;">
+      <button type="submit" class="btn secondary" style="color:#b32d2e; border-color:#f0c4c4;" onclick="return confirm('Delete the selected control(s) entirely? This also removes their submission history and cannot be undone.');">Delete selected controls</button>
+      <button type="submit" formaction="{% url 'controls_bulk_delete_submissions' project.pk %}" formnovalidate class="btn secondary" style="color:#b45a00; border-color:#f0dcc0;" onclick="return confirm('Clear working paper data (test activities, Kontrollergebnis, status, validation, Geprüft von) for the selected control(s)? The controls themselves will be kept — you can import corrected working papers afterward.');">Clear working paper data for selected</button>
+    </div>
+  <table style="table-layout:fixed; width:100%;">
+    <thead><tr>
+      <th style="width:1%;"><input type="checkbox" id="select-all-controls"></th>
+      <th style="width:5%; white-space:nowrap;">Control ID</th>
+      <th style="width:6%; white-space:nowrap;">Kontrollziel</th>
+      <th style="width:16%;">Kontrollbeschreibung</th>
+      <th style="width:16%;">Test activities (5.1)</th>
+      <th style="width:12%;">Kontrollergebnis (5.3)</th>
+      <th style="width:7%;">Status</th>
+      <th style="width:14%;">Validation
+        <span class="info-tip" style="color:var(--wp-text-muted); border:1px solid var(--wp-border); border-radius:50%; padding:0 5px; font-size:10px; font-weight:400;">
+          i
+          <span class="info-tip-bubble">
+            What gets checked when a working paper is imported:
+            <ul>
+              <li>Kontrollziel (1.2) matches the IKS master list</li>
+              <li>Kontrollbeschreibung (1.3) matches the IKS master list</li>
+              <li>Test activities (5.1) use standard phrasing: "Discussion with the process owner to...", "Inspection of existing process documentation...", "Review of an example of ... with regard to the following aspects:"</li>
+            </ul>
+          </span>
+        </span>
+      </th>
+      <th style="width:8%;">Geprüft von</th>
+      <th style="width:5%;">Review OK</th>
+      <th style="width:5%;"></th>
+    </tr></thead>
+    <tbody>
+      {% for c in controls %}
+      {% with s=c.latest_submission %}
+      <tr class="control-row {% if c.reviewed_ok %}row-reviewed-ok{% endif %}" id="control-tr-{{ c.pk }}">
+        <td><input type="checkbox" name="control_ids" value="{{ c.pk }}" class="control-checkbox"></td>
+        <td class="cid">{{ c.control_id }}</td>
+        <td class="kontrollziel-cell" style="font-size:12px;">{{ c.kontrollziel }}</td>
+        <td style="font-size:12px;">{{ c.kontrollbeschreibung }}</td>
+
+        {% if s %}
+          <td>
+            <textarea class="indent-editable auto-resize-textarea" name="test_activities_text" form="form-{{ s.pk }}" rows="4" style="width:100%; font-size:12px; margin-bottom:4px; overflow-y:hidden; resize:none;">{{ s.test_activities_as_editable_text }}</textarea>
+            <button type="button" class="btn-link suggest-btn" data-submission-id="{{ s.pk }}" data-control-id="{{ c.pk }}" style="font-size:11px; text-decoration:none;">&#128161; <span style="text-decoration:underline;">Suggestions</span></button>
+          </td>
+          <td><textarea class="auto-resize-textarea" name="kontrollergebnis_raw" form="form-{{ s.pk }}" rows="4" style="width:100%; font-size:12px; margin-bottom:0; overflow-y:hidden; resize:none;">{{ s.kontrollergebnis_raw }}</textarea></td>
+          <td id="status-cell-{{ c.pk }}">{% if s.no_deviation %}<span style="color:#00a32a; font-size:12px;">No finding</span>{% else %}<span style="color:#b45a00; font-size:12px;">Finding</span>{% endif %}</td>
+        {% else %}
+          <td colspan="2" style="color:var(--wp-text-muted);">Not yet submitted</td>
+          <td><span class="badge missing">Not submitted</span></td>
+        {% endif %}
+
+        <td id="validation-cell-{{ c.pk }}">
+          {% for r in s.validation_results_list %}
+            <div style="font-size:11.5px; margin-bottom:3px; {% if r.passed %}color:#00a32a;{% else %}color:#b32d2e;{% endif %}">
+              {% if r.passed %}&#10003;{% else %}&#10007;{% endif %} {{ r.check }}
+            </div>
+          {% empty %}<span style="color:var(--wp-text-muted); font-size:12px;">—</span>{% endfor %}
+        </td>
+        <td style="font-size:12px;">
+          {% if s.geprueft_von %}{{ s.geprueft_von }}{% if s.geprueft_datum %}<br><span style="color:var(--wp-text-muted); font-size:11px;">{{ s.geprueft_datum }}</span>{% endif %}
+          {% else %}<span style="color:var(--wp-text-muted);">—</span>{% endif %}
+        </td>
+        <td style="text-align:center;">
+          <input type="checkbox" class="review-ok-toggle" data-control-id="{{ c.pk }}" {% if c.reviewed_ok %}checked{% endif %} title="Mark this control's review as OK">
+        </td>
+        <td>
+          {% if s %}<button type="submit" form="form-{{ s.pk }}" class="btn secondary save-btn" data-control-row="{{ c.pk }}" style="padding:4px 8px; font-size:11px;">Save</button>
+          <span class="save-msg" id="save-msg-{{ c.pk }}" style="display:none; color:#00a32a; font-size:11px; margin-left:4px;">&#10003; Saved</span>{% endif %}
+          <br>
+          <a href="{% url 'control_history' project.pk c.pk %}" class="btn-link history-link" id="history-link-{{ c.pk }}" style="font-size:11px; {% if c.has_edit_history %}font-weight:700; color:#b45a00;{% endif %}">
+            History{% if c.has_edit_history %} &#9679;{% endif %}
+          </a>
+        </td>
+      </tr>
+      {% if s %}
+      <tr id="suggestions-row-{{ c.pk }}" style="display:none;">
+        <td colspan="11" style="background:#f6f7f7; padding:14px 20px;">
+          <div id="suggestions-content-{{ c.pk }}"><p style="color:var(--wp-text-muted); font-size:12.5px; margin:0;">Loading…</p></div>
+        </td>
+      </tr>
+      {% endif %}
+      {% endwith %}
+      {% empty %}
+      <tr><td colspan="11">No controls match this filter.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </form>
+
+  {# Real <form> elements live outside the table; inputs above reference them via form="form-ID" (valid HTML5) #}
+  {% for c in controls %}
+    {% with s=c.latest_submission %}
+      {% if s %}<form id="form-{{ s.pk }}" method="post" action="{% url 'submission_edit' project.pk s.pk %}">{% csrf_token %}</form>{% endif %}
+    {% endwith %}
+  {% endfor %}
+</div>
+
+<script>
+// Tab inside a test-activities textarea inserts a "- " sub-bullet marker at the
+// start of the current line instead of jumping focus to the next field.
+document.querySelectorAll('textarea.indent-editable').forEach((ta) => {
+  ta.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    const start = ta.selectionStart;
+    const value = ta.value;
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    const before = value.slice(0, lineStart);
+    const after = value.slice(lineStart);
+    if (after.startsWith('- ')) return; // already indented
+    ta.value = before + '- ' + after;
+    ta.selectionStart = ta.selectionEnd = start + 2;
+  });
+});
+</script>
+
+<script>
+function setupDropzone(zoneId, inputId, textId) {
+  const zone = document.getElementById(zoneId);
+  const input = document.getElementById(inputId);
+  const textEl = document.getElementById(textId);
+  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) { input.files = e.dataTransfer.files; updateText(); }
+  });
+  input.addEventListener('change', updateText);
+  function updateText() {
+    if (input.files.length === 1) textEl.textContent = input.files[0].name + ' — click "Import" below.';
+    else if (input.files.length > 1) textEl.textContent = input.files.length + ' files selected — click "Import" below.';
+  }
+}
+setupDropzone('excel-dropzone', 'excel-input', 'excel-dropzone-text');
+setupDropzone('wp-dropzone', 'wp-input', 'wp-dropzone-text');
+
+// Select-all checkbox for bulk delete
+const selectAll = document.getElementById('select-all-controls');
+if (selectAll) {
+  selectAll.addEventListener('change', () => {
+    document.querySelectorAll('.control-checkbox').forEach((cb) => { cb.checked = selectAll.checked; });
+  });
+}
+
+// Review OK toggle -- highlights the whole row green, saved via AJAX (no page reload)
+document.querySelectorAll('.review-ok-toggle').forEach((toggle) => {
+  toggle.addEventListener('change', async () => {
+    const controlId = toggle.dataset.controlId;
+    const row = document.getElementById(`control-tr-${controlId}`);
+    try {
+      const resp = await fetch(`/projects/{{ project.pk }}/controls/${controlId}/toggle-review/`, {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+      });
+      if (!resp.ok) throw new Error('Toggle failed');
+      const data = await resp.json();
+      if (row) row.classList.toggle('row-reviewed-ok', data.reviewed_ok);
+      toggle.checked = data.reviewed_ok;
+    } catch (err) {
+      toggle.checked = !toggle.checked; // revert on failure
+      alert('Could not save review status — please try again.');
+    }
+  });
+});
+
+// Real-time search across Control ID, Kontrollziel, and Test activities (5.1)
+const searchInput = document.getElementById('control-search');
+if (searchInput) {
+  searchInput.addEventListener('input', () => {
+    const query = searchInput.value.trim().toLowerCase();
+    document.querySelectorAll('tr.control-row').forEach((row) => {
+      const controlId = row.querySelector('.cid')?.textContent.toLowerCase() || '';
+      const kontrollziel = row.querySelector('.kontrollziel-cell')?.textContent.toLowerCase() || '';
+      const testActivities = row.querySelector('textarea[name="test_activities_text"]')?.value.toLowerCase() || '';
+      const matches = !query || controlId.includes(query) || kontrollziel.includes(query) || testActivities.includes(query);
+      row.style.display = matches ? '' : 'none';
+    });
+  });
+}
+
+// Save inline edits via AJAX -- no full page reload, no scroll jump, just a
+// small "Saved" message next to the button and live status/history updates.
+document.querySelectorAll('.save-btn').forEach((btn) => {
+  const controlId = btn.dataset.controlRow;
+  const form = document.getElementById(btn.getAttribute('form'));
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Saving...';
+
+    try {
+      const resp = await fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      if (!resp.ok) throw new Error('Save failed');
+      const data = await resp.json();
+
+      // Update the Status cell in place
+      const statusCell = document.getElementById(`status-cell-${controlId}`);
+      if (statusCell) {
+        statusCell.innerHTML = data.no_deviation
+          ? '<span style="color:#00a32a; font-size:12px;">No finding</span>'
+          : '<span style="color:#b45a00; font-size:12px;">Finding</span>';
+      }
+
+      // Update the Validation cell in place with the freshly rechecked results
+      const validationCell = document.getElementById(`validation-cell-${controlId}`);
+      if (validationCell && data.validation_results) {
+        if (data.validation_results.length === 0) {
+          validationCell.innerHTML = '<span style="color:var(--wp-text-muted); font-size:12px;">—</span>';
+        } else {
+          validationCell.innerHTML = data.validation_results.map((r) => {
+            const color = r.passed ? '#00a32a' : '#b32d2e';
+            const icon = r.passed ? '&#10003;' : '&#10007;';
+            return `<div style="font-size:11.5px; margin-bottom:3px; color:${color};">${icon} ${r.check}</div>`;
+          }).join('');
+        }
+      }
+
+      // Highlight the History link if this edit created real history
+      const historyLink = document.getElementById(`history-link-${controlId}`);
+      if (historyLink && data.has_edit_history) {
+        historyLink.style.fontWeight = '700';
+        historyLink.style.color = '#b45a00';
+        if (!historyLink.textContent.includes('●')) {
+          historyLink.innerHTML = 'History &#9679;';
+        }
+      }
+
+      // Small inline "Saved" confirmation next to the button, no page scroll
+      const msg = document.getElementById(`save-msg-${controlId}`);
+      if (msg) {
+        msg.style.display = 'inline';
+        setTimeout(() => { msg.style.display = 'none'; }, 2500);
+      }
+    } catch (err) {
+      alert('Save failed — please try again.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  });
+});
+
+// Auto-grow textareas to fit their full content -- no manual resizing needed
+function autoResizeTextarea(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+document.querySelectorAll('.auto-resize-textarea').forEach((ta) => {
+  autoResizeTextarea(ta);
+  ta.addEventListener('input', () => autoResizeTextarea(ta));
+});
+</script>
+
+<script>
+(function() {
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function unescapeHtml(s) {
+    return s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  }
+
+  document.querySelectorAll('.suggest-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const controlId = btn.dataset.controlId;
+      const submissionId = btn.dataset.submissionId;
+      const suggestionsRow = document.getElementById(`suggestions-row-${controlId}`);
+      const contentEl = document.getElementById(`suggestions-content-${controlId}`);
+      const mainRow = document.getElementById(`control-tr-${controlId}`);
+      const textarea = mainRow ? mainRow.querySelector('textarea[name="test_activities_text"]') : null;
+
+      // Toggle: if already open, just close it
+      if (suggestionsRow.style.display !== 'none') {
+        suggestionsRow.style.display = 'none';
+        return;
+      }
+      suggestionsRow.style.display = 'table-row';
+      contentEl.innerHTML = '<p style="color:var(--wp-text-muted); font-size:12.5px; margin:0;">Searching…</p>';
+
+      try {
+        const resp = await fetch(`/projects/{{ project.pk }}/submissions/${submissionId}/suggest/`, {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+          },
+          body: 'test_activities_text=' + encodeURIComponent(textarea ? textarea.value : ''),
+        });
+        const data = await resp.json();
+        renderSuggestions(contentEl, data.suggestions || [], textarea);
+      } catch (err) {
+        contentEl.innerHTML = '<p style="color:#b32d2e; font-size:12.5px; margin:0;">Could not load suggestions — please try again.</p>';
+      }
+    });
+  });
+
+  function renderSuggestions(contentEl, suggestions, textarea) {
+    if (!suggestions.length) {
+      contentEl.innerHTML = '<p style="color:var(--wp-text-muted); font-size:12.5px; margin:0;">No similar entries found in the Reference Report library yet. Import some old reports first, or write a bit more before searching.</p>';
+      return;
+    }
+    contentEl.innerHTML = '<div style="font-size:11px; font-weight:600; color:var(--wp-text-muted); text-transform:uppercase; margin-bottom:8px;">Similar past entries (from Reference Reports)</div>'
+      + suggestions.map((s, i) => `
+        <div style="background:#fff; border:1px solid var(--wp-border); border-radius:4px; padding:10px 12px; margin-bottom:8px;">
+          <div style="font-size:11.5px; color:var(--wp-text-muted); margin-bottom:5px;">#${i + 1} &middot; ${escapeHtml(s.report_name)}${s.control_id ? ' &middot; ' + escapeHtml(s.control_id) : ''}</div>
+          ${s.kontrollbeschreibung ? `<div style="font-size:11px; color:var(--wp-text-muted); margin-bottom:5px;">${escapeHtml(s.kontrollbeschreibung)}</div>` : ''}
+          <div style="font-size:12.5px; white-space:pre-line; line-height:1.6; user-select:text;">${escapeHtml(s.test_performed)}</div>
+        </div>
+      `).join('');
+  }
+})();
+</script>
+{% endblock %}

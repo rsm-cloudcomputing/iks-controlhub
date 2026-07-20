@@ -1,0 +1,55 @@
+{% extends "controls/base.html" %}
+{% block nav_dashboard %}active{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_sub %}<div class="sub">{{ stats.total_projects }} project space{{ stats.total_projects|pluralize }}</div>{% endblock %}
+{% block page_actions %}<a class="btn" href="{% url 'project_create' %}">+ New project</a>{% endblock %}
+
+{% block content %}
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="label">Project spaces</div>
+    <div class="value">{{ stats.total_projects }}</div>
+    <div class="delta">Audit engagements</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Total controls</div>
+    <div class="value">{{ stats.total_controls }}</div>
+    <div class="delta">Across all projects</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Submitted</div>
+    <div class="value" style="color:#00a32a;">{{ stats.submitted }}</div>
+    <div class="delta">Working papers received</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Missing</div>
+    <div class="value" style="color:#b32d2e;">{{ stats.missing }}</div>
+    <div class="delta">Awaiting submission</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Project spaces</h2>
+  <table>
+    <thead><tr><th>Customer</th><th>Audit type</th><th>Kind</th><th>Language</th><th>Report date</th><th>Last updated</th><th></th></tr></thead>
+    <tbody>
+      {% for p in projects %}
+      <tr>
+        <td>{{ p.customer_name }}</td>
+        <td>{{ p.get_audit_type_display }}</td>
+        <td>{{ p.get_report_kind_display }}</td>
+        <td>{{ p.get_language_display }}</td>
+        <td>{{ p.report_date }}</td>
+        <td>
+          {{ p.updated_at|date:"d M Y, H:i" }}
+          {% if p.updated_by %}<br><span style="color:var(--wp-text-muted); font-size:12px;">by {{ p.updated_by.username }}</span>{% endif %}
+        </td>
+        <td><a href="{% url 'project_detail' p.pk %}">Open &rarr;</a> &middot; <a href="{% url 'project_update' p.pk %}">Edit</a> &middot; <a href="{% url 'project_delete' p.pk %}" style="color:#b32d2e;">Delete</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7">No project spaces yet. <a href="{% url 'project_create' %}">Create one</a> to get started.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "controls/base.html" %}
+{% block nav_reference %}active{% endblock %}
+{% block page_title %}{{ report.name }}{% endblock %}
+{% block page_sub %}<div class="sub">Imported {{ report.uploaded_at|date:"d M Y, H:i" }} by {{ report.uploaded_by.username|default:"—" }} &middot; {{ entries.count }} control(s)</div>{% endblock %}
+{% block page_actions %}<a class="btn secondary" href="{% url 'reference_report_list' %}">&larr; Back to reference reports</a>{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Add an entry</h2>
+  <p style="font-size:12.5px; color:var(--wp-text-muted); margin-top:-8px;">Paste a control's description, tests performed, and result directly — no Word file needed.</p>
+  <form method="post" action="{% url 'reference_report_entry_add' report.pk %}">
+    {% csrf_token %}
+    <div style="display:flex; gap:12px;">
+      <div style="flex:1;">{{ entry_form.control_id.label_tag }}{{ entry_form.control_id }}</div>
+      <div style="flex:2;">{{ entry_form.criteria.label_tag }}{{ entry_form.criteria }}</div>
+    </div>
+    {{ entry_form.kontrollbeschreibung.label_tag }}{{ entry_form.kontrollbeschreibung }}
+    {{ entry_form.test_performed.label_tag }}{{ entry_form.test_performed }}
+    <p class="helptext">{{ entry_form.test_performed.help_text }}</p>
+    {{ entry_form.result_text.label_tag }}{{ entry_form.result_text }}
+    <button class="btn secondary" type="submit">+ Add entry</button>
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <thead><tr><th style="width:9%;">Criteria</th><th style="width:8%;">Control ID</th><th style="width:20%;">Kontrollbeschreibung</th><th style="width:29%;">Test performed</th><th style="width:18%;">Result</th><th style="width:1%;"></th></tr></thead>
+    <tbody>
+      {% for e in entries %}
+      <tr>
+        <td class="cid" style="font-size:12px;">{{ e.criteria }}</td>
+        <td class="cid">{{ e.control_id|default:"—" }}</td>
+        <td style="font-size:12px;">{{ e.kontrollbeschreibung }}</td>
+        <td style="font-size:12px; white-space:pre-line; line-height:1.6;">{{ e.test_performed }}</td>
+        <td style="font-size:12px;">{{ e.result_text }}</td>
+        <td>
+          <form method="post" action="{% url 'reference_report_entry_delete' report.pk e.pk %}" onsubmit="return confirm('Delete this entry?');">
+            {% csrf_token %}
+            <button type="submit" class="btn-link" style="color:#b32d2e; font-size:11px;">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6">No entries yet — add one above.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
