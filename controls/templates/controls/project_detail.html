@@ -238,6 +238,41 @@ document.querySelectorAll('.review-ok-toggle').forEach((toggle) => {
   });
 });
 
+// Textareas can't render <mark> tags directly (they only show plain text),
+// so matches in Test Activities are highlighted via a temporary read-only
+// overlay <div> swapped in on top of the textarea, styled to match it. The
+// real textarea (still editable) reappears the moment the query no longer
+// matches that field.
+function toggleTestActivitiesHighlight(row, query) {
+  const textarea = row.querySelector('textarea[name="test_activities_text"]');
+  if (!textarea) return;
+  let overlay = row.querySelector('.ta-highlight-overlay');
+
+  const text = textarea.value;
+  const hasMatch = query && text.toLowerCase().includes(query);
+
+  if (!hasMatch) {
+    if (overlay) overlay.style.display = 'none';
+    textarea.style.display = '';
+    return;
+  }
+
+  const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp('(' + escapedQuery + ')', 'ig');
+  const highlighted = escapeHtml(text).replace(regex, '<mark>$1</mark>');
+
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'ta-highlight-overlay';
+    overlay.style.cssText = 'width:100%; font-size:12px; margin-bottom:4px; white-space:pre-wrap; word-wrap:break-word; border:1px solid var(--wp-border); border-radius:3px; padding:7px 10px; box-sizing:border-box; background:#fff; max-height:none;';
+    textarea.parentNode.insertBefore(overlay, textarea);
+  }
+  overlay.innerHTML = highlighted;
+  overlay.style.display = 'block';
+  textarea.style.display = 'none';
+}
+
 // Real-time search across Control ID, Kontrollziel, and Test activities (5.1)
 const searchInput = document.getElementById('control-search');
 if (searchInput) {
@@ -253,6 +288,7 @@ if (searchInput) {
       row.style.display = matches ? '' : 'none';
       highlightSearchMatch(cidCell, matches ? query : '');
       highlightSearchMatch(kzCell, matches ? query : '');
+      toggleTestActivitiesHighlight(row, matches ? query : '');
     });
   });
 }
