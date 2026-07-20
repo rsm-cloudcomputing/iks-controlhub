@@ -612,12 +612,14 @@ def convert_docx_to_pdf(input_path, output_dir):
 def _convert_via_libreoffice(input_path, output_dir):
     import subprocess
     import shutil
+    import tempfile
+    import uuid
 
     candidates = [
         "soffice",
         "libreoffice",
         "/Applications/LibreOffice.app/Contents/MacOS/soffice",  # macOS (Homebrew cask / direct download)
-        "/usr/bin/soffice",       # common Linux path
+        "/usr/bin/soffice",       # common Linux path (incl. PythonAnywhere, pre-installed since ~2020)
         "/usr/local/bin/soffice",  # common Linux/Homebrew-on-Intel-Mac path
         "/opt/homebrew/bin/soffice",  # Homebrew on Apple Silicon, if symlinked
     ]
@@ -635,13 +637,28 @@ def _convert_via_libreoffice(input_path, output_dir):
     if not soffice_bin:
         return None
 
+    # Each invocation gets its own LibreOffice user profile directory.
+    # Without this, concurrent requests (e.g. two people clicking "Preview"
+    # around the same time on a shared host) share the same default profile
+    # and can crash or hang each other -- LibreOffice's headless mode isn't
+    # safe for concurrent access to a single profile.
+    user_install_dir = Path(tempfile.gettempdir()) / f"libreoffice_profile_{uuid.uuid4().hex}"
     try:
         subprocess.run(
-            [soffice_bin, "--headless", "--convert-to", "pdf", "--outdir", str(output_dir), str(input_path)],
+            [
+                soffice_bin, "--headless", "--norestore",
+                f"-env:UserInstallation=file://{user_install_dir}",
+                "--convert-to", "pdf", "--outdir", str(output_dir), str(input_path),
+            ],
             check=True, capture_output=True, timeout=60,
         )
     except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         return None
+    finally:
+        # Each profile directory is used exactly once and can be sizeable --
+        # clean it up so repeated conversions don't slowly fill up disk quota.
+        shutil.rmtree(user_install_dir, ignore_errors=True)
+
     pdf_path = Path(output_dir) / (Path(input_path).stem + ".pdf")
     return pdf_path if pdf_path.exists() else None
 
