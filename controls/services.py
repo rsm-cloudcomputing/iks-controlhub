@@ -316,8 +316,42 @@ def _resolve_bullet_levels(items):
 
     num_ids = [nid for _, _, _, nid in items if nid is not None]
     if num_ids and len(set(num_ids)) > 1:
-        baseline_num_id = num_ids[0]
-        return [{"text": t, "level": 0 if nid is None or nid == baseline_num_id else 1} for t, _, _, nid in items]
+        # A numId switch only means "entering a sub-bullet block" when the
+        # PRECEDING line ends with a colon (a natural "here are the details"
+        # cue used throughout these documents). Without that, a numId switch
+        # is just Word creating a new list instance for what is still a
+        # top-level bullet -- e.g. a document can have a genuine main-bullet
+        # numId, a genuine sub-bullet numId (following a colon), AND a THIRD
+        # numId for one more independent main bullet at the very end. Simply
+        # treating "any numId different from the first one" as sub-level
+        # breaks that case, since it can't distinguish the second main
+        # bullet from a real sub-item.
+        result = []
+        current_main_num_id = None
+        sub_num_id = None
+        prev_ends_with_colon = False
+        for text, _, _, nid in items:
+            if nid is None:
+                level = 0
+                sub_num_id = None
+            elif current_main_num_id is None:
+                current_main_num_id = nid
+                level = 0
+            elif nid == current_main_num_id:
+                level = 0
+                sub_num_id = None
+            elif nid == sub_num_id:
+                level = 1  # continuing an already-established sub-block
+            elif prev_ends_with_colon:
+                sub_num_id = nid
+                level = 1  # a new sub-block, cued by the preceding colon
+            else:
+                current_main_num_id = nid  # a new main bullet, not a sub-item
+                sub_num_id = None
+                level = 0
+            result.append({"text": text, "level": level})
+            prev_ends_with_colon = text.rstrip().endswith(":")
+        return result
 
     return [{"text": t, "level": 0} for t, _, _, _ in items]
 

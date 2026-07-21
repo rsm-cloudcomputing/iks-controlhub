@@ -271,6 +271,15 @@ document.querySelectorAll('.progress-upload-form').forEach((form) => {
         if (progressLabel) progressLabel.textContent = pct + '%';
       }
     });
+    xhr.upload.addEventListener('load', () => {
+      // The upload itself has finished, but the server still needs to parse
+      // the file, run validations, etc. -- that can take a real amount of
+      // time and has no byte-progress to report, so switch to an
+      // indeterminate/animated bar with a clear "Processing" label instead
+      // of leaving it sitting at 100% looking frozen.
+      if (progressBar) progressBar.removeAttribute('value');
+      if (progressLabel) progressLabel.textContent = 'Processing…';
+    });
     xhr.onload = () => {
       window.location.href = xhr.responseURL || window.location.href;
     };
