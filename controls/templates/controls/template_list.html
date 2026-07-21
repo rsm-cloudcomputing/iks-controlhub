@@ -36,7 +36,7 @@
         <td>{{ t.uploaded_by.username|default:"—" }}</td>
         <td>{{ t.uploaded_at|date:"d M Y, H:i" }}</td>
         <td style="white-space:nowrap;">
-          <a href="{% url 'template_preview' t.pk %}" target="_blank">Preview</a> &middot;
+          <a href="{% url 'template_preview' t.pk %}#view=FitH" target="_blank">Preview</a> &middot;
           <a href="{% url 'template_placeholders' t.pk %}">Placeholders</a> &middot;
           <a href="{% url 'template_update' t.pk %}">Edit</a> &middot;
           <a href="{% url 'template_delete' t.pk %}" style="color:#b32d2e;">Delete</a>
