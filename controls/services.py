@@ -16,7 +16,7 @@ from docxtpl import DocxTemplate
 
 from .models import Control, ArbeitspapierSubmission, ChangeLogEntry
 
-SECTION_HEADER_RE = re.compile(r"^(\d+(?:\.\d+)?)\t")
+SECTION_HEADER_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*\t")
 
 # Some working papers omit the "5.1" numeric prefix on this specific section
 # header (just the label, e.g. "       Durchgeführte Testaktivitäten" with no
@@ -441,55 +441,64 @@ def import_arbeitspapier(project, file_obj, filename, user):
         },
     )
 
-    # Snapshot the master values BEFORE we potentially fill them in below --
-    # this is what the working paper gets validated against.
-    control_before = {
-        "kontrollziel": control.kontrollziel,
-        "kontrollbeschreibung": control.kontrollbeschreibung,
-    }
-    validation_results = run_validations(control_before, parsed, project.language)
+    try:
+        # Snapshot the master values BEFORE we potentially fill them in below --
+        # this is what the working paper gets validated against.
+        control_before = {
+            "kontrollziel": control.kontrollziel,
+            "kontrollbeschreibung": control.kontrollbeschreibung,
+        }
+        validation_results = run_validations(control_before, parsed, project.language)
 
-    # Fill in kontrollziel/beschreibung if missing (e.g. was blank from Excel import)
-    changed = False
-    if not control.kontrollziel and parsed["kontrollziel"]:
-        control.kontrollziel = parsed["kontrollziel"]
-        changed = True
-    if not control.kontrollbeschreibung and parsed["kontrollbeschreibung"]:
-        control.kontrollbeschreibung = parsed["kontrollbeschreibung"]
-        changed = True
-    if changed:
-        control.save()
+        # Fill in kontrollziel/beschreibung if missing (e.g. was blank from Excel import)
+        changed = False
+        if not control.kontrollziel and parsed["kontrollziel"]:
+            control.kontrollziel = parsed["kontrollziel"]
+            changed = True
+        if not control.kontrollbeschreibung and parsed["kontrollbeschreibung"]:
+            control.kontrollbeschreibung = parsed["kontrollbeschreibung"]
+            changed = True
+        if changed:
+            control.save()
 
-    # Diff against the previous latest submission (if any) for the change log --
-    # this is what powers the "highlight what changed" view in the history page.
-    previous = control.latest_submission
-    previous_values = {
-        "test_activities": previous.test_activities_as_editable_text() if previous else "",
-        "kontrollergebnis_raw": previous.kontrollergebnis_raw if previous else "",
-    }
+        # Diff against the previous latest submission (if any) for the change log --
+        # this is what powers the "highlight what changed" view in the history page.
+        previous = control.latest_submission
+        previous_values = {
+            "test_activities": previous.test_activities_as_editable_text() if previous else "",
+            "kontrollergebnis_raw": previous.kontrollergebnis_raw if previous else "",
+        }
 
-    submission = ArbeitspapierSubmission.objects.create(
-        control=control,
-        uploaded_by=user,
-        test_activities=parsed["test_activities"],
-        kontrollergebnis_raw=parsed["kontrollergebnis_raw"],
-        no_deviation=parsed["no_deviation"],
-        validation_results=json.dumps(validation_results),
-        geprueft_von=parsed["geprueft_von"],
-        geprueft_datum=parsed["geprueft_datum"],
-        source_file=filename,
-    )
+        submission = ArbeitspapierSubmission.objects.create(
+            control=control,
+            uploaded_by=user,
+            test_activities=parsed["test_activities"],
+            kontrollergebnis_raw=parsed["kontrollergebnis_raw"],
+            no_deviation=parsed["no_deviation"],
+            validation_results=json.dumps(validation_results),
+            geprueft_von=parsed["geprueft_von"],
+            geprueft_datum=parsed["geprueft_datum"],
+            source_file=filename,
+        )
 
-    new_values = {
-        "test_activities": submission.test_activities_as_editable_text(),
-        "kontrollergebnis_raw": submission.kontrollergebnis_raw,
-    }
-    diff = compute_diff(previous_values, new_values, ["test_activities", "kontrollergebnis_raw"])
-    ChangeLogEntry.objects.create(
-        control=control, event_type="import", actor=user, source_file=filename, diff=diff,
-    )
+        new_values = {
+            "test_activities": submission.test_activities_as_editable_text(),
+            "kontrollergebnis_raw": submission.kontrollergebnis_raw,
+        }
+        diff = compute_diff(previous_values, new_values, ["test_activities", "kontrollergebnis_raw"])
+        ChangeLogEntry.objects.create(
+            control=control, event_type="import", actor=user, source_file=filename, diff=diff,
+        )
 
-    return submission
+        if control.import_error:
+            control.import_error = ""
+            control.save(update_fields=["import_error"])
+
+        return submission
+    except Exception as e:
+        control.import_error = f"{filename}: {e}"
+        control.save(update_fields=["import_error"])
+        raise
 
 
 # ---------------------------------------------------------------------------
