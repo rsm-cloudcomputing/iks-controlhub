@@ -114,10 +114,26 @@
             <button type="button" class="btn-link suggest-btn" data-submission-id="{{ s.pk }}" data-control-id="{{ c.pk }}" style="font-size:11px; text-decoration:none;">&#128161; <span style="text-decoration:underline;">Suggestions</span></button>
           </td>
           <td><textarea class="auto-resize-textarea" name="kontrollergebnis_raw" form="form-{{ s.pk }}" rows="4" style="width:100%; font-size:12px; margin-bottom:0; overflow-y:hidden; resize:none;">{{ s.kontrollergebnis_raw }}</textarea></td>
-          <td id="status-cell-{{ c.pk }}">{% if s.no_deviation %}<span style="color:#00a32a; font-size:12px;">No finding</span>{% else %}<span style="color:#b45a00; font-size:12px;">Finding</span>{% endif %}</td>
+          <td id="status-cell-{{ c.pk }}">
+            {% if c.import_error %}
+            <span style="color:#b32d2e; font-size:12px; font-weight:600;" title="{{ c.import_error }}">&#9888; Import failed</span>
+            <div style="font-size:11px; color:#b32d2e; margin-top:2px;">{{ c.import_error }}</div>
+            {% elif s.no_deviation %}
+            <span style="color:#00a32a; font-size:12px;">No finding</span>
+            {% else %}
+            <span style="color:#b45a00; font-size:12px;">Finding</span>
+            {% endif %}
+          </td>
         {% else %}
           <td colspan="2" style="color:var(--wp-text-muted);">Not yet submitted</td>
-          <td><span class="badge missing">Not submitted</span></td>
+          <td>
+            {% if c.import_error %}
+            <span style="color:#b32d2e; font-size:12px; font-weight:600;" title="{{ c.import_error }}">&#9888; Import failed</span>
+            <div style="font-size:11px; color:#b32d2e; margin-top:2px;">{{ c.import_error }}</div>
+            {% else %}
+            <span class="badge missing">Not submitted</span>
+            {% endif %}
+          </td>
         {% endif %}
 
         <td id="validation-cell-{{ c.pk }}">

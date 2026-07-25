@@ -144,6 +144,13 @@ class Control(models.Model):
     kontrollziel = models.CharField(max_length=255, blank=True)
     kontrollbeschreibung = models.TextField(blank=True)
 
+    # Set when a working paper upload for this control fails partway through
+    # (after its control_id was already identified) -- shown in the Status
+    # column so a failure in a multi-file batch upload is visible per-control,
+    # not just in a one-time flash message. Cleared on the next successful
+    # import for this control.
+    import_error = models.TextField(blank=True, default="")
+
     # Manual "looks good" sign-off toggle -- highlights the whole row green
     # in the Controls table when checked. Separate from geprueft_von (which
     # is auto-extracted from the working paper itself) -- this is whoever is

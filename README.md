@@ -272,3 +272,5 @@ creating the app).
 - **Multi-user editing**: Postgres handles concurrent writes natively; the
   `ForeignKey`s to Django's `User` model (`created_by`, `uploaded_by`) are
   already in place if you want to restrict who can edit what later.
+
+
