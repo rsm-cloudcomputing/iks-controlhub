@@ -28,7 +28,7 @@ KNOWN_SECTION_LABELS = {
 
 # Any of these substrings (case-insensitive) in section 5.3 means "no finding".
 NO_DEVIATION_MARKERS = [
-    "keine feststellung",
+    r"keine fest(st)?ellung",  # tolerates the common typo "Festellungen" (drops the middle "st") for "Feststellungen"
     "keine abweichung",
     "no deviation",
     "no exception",
@@ -384,7 +384,7 @@ def parse_arbeitspapier(docx_path_or_file):
     test_activities = json.dumps(activities)
 
     kontrollergebnis_raw = plain_text("5.3")
-    no_deviation = any(marker in kontrollergebnis_raw.lower() for marker in NO_DEVIATION_MARKERS)
+    no_deviation = any(re.search(marker, kontrollergebnis_raw.lower()) for marker in NO_DEVIATION_MARKERS)
 
     return {
         "control_id": control_id,
