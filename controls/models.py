@@ -31,6 +31,11 @@ class Project(models.Model):
     report_date = models.DateField()
     language = models.CharField(max_length=2, choices=LANGUAGE_CHOICES, default="en")
 
+    # Whether the engagement involves any subservice organizations
+    # (Subunternehmen) -- toggles subservice-organization wording in the
+    # generated report on/off (e.g. the AWS/cloud subservice paragraphs).
+    has_subservice_org = models.BooleanField(default=False)
+
     # Type 1 engagements report a single point-in-time date rather than a period.
     examination_date = models.DateField(null=True, blank=True, help_text="Type 1 only: date of examination")
 

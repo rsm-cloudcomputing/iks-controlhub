@@ -56,6 +56,15 @@
 <p style="font-size:12px; color:var(--wp-text-muted); margin: -6px 0 6px;">Audit periods and project metadata (customer info, examination period, etc.) are managed on the <a href="{% url 'project_update' project.pk %}">Edit project</a> page.</p>
 {% endif %}
 
+<div class="card" id="section-subservice-org" style="padding:14px 20px;">
+  <label style="display:flex; align-items:center; gap:8px; font-weight:600; margin-bottom:0; cursor:pointer;">
+    <input type="checkbox" id="has-subservice-org-checkbox" {% if project.has_subservice_org %}checked{% endif %}>
+    This engagement involves subservice organizations (Subunternehmen)
+  </label>
+  <p style="font-size:12px; color:var(--wp-text-muted); margin:4px 0 0 26px;">Controls the subservice-organization wording in the generated report (e.g. cloud/AWS subservice paragraphs). Use <code>&#123;&#123; has_subservice_org &#125;&#125;</code> in the template.</p>
+  <span class="save-msg" id="subservice-org-save-msg" style="display:none; color:#00a32a; font-size:11.5px; margin-left:26px;">&#10003; Saved</span>
+</div>
+
 <div class="card" id="section-controls">
   <h2>Controls ({{ controls|length }})</h2>
   <div style="margin-bottom:14px; display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
@@ -446,6 +455,31 @@ document.querySelectorAll('.auto-resize-textarea').forEach((ta) => {
           <div style="font-size:12.5px; white-space:pre-line; line-height:1.6; user-select:text;">${escapeHtml(s.test_performed)}</div>
         </div>
       `).join('');
+  }
+
+  // Subservice organization checkbox -- saves immediately via AJAX
+  const subserviceCheckbox = document.getElementById('has-subservice-org-checkbox');
+  if (subserviceCheckbox) {
+    subserviceCheckbox.addEventListener('change', async () => {
+      try {
+        const resp = await fetch("{% url 'project_update_field' project.pk %}", {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}',
+          },
+          body: 'field=has_subservice_org&value=' + (subserviceCheckbox.checked ? 'true' : 'false'),
+        });
+        if (resp.ok) {
+          const msg = document.getElementById('subservice-org-save-msg');
+          if (msg) {
+            msg.style.display = 'inline';
+            setTimeout(() => { msg.style.display = 'none'; }, 2000);
+          }
+        }
+      } catch (err) { /* non-fatal */ }
+    });
   }
 })();
 </script>

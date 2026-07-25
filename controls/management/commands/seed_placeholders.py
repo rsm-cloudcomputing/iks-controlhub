@@ -19,16 +19,20 @@ PLACEHOLDERS = [
     ("report_date", "project_info", "Report date", "text", False),
     ("audit_conducted_from_to", "project_info", "Examination period conducted, e.g. \"1st January 2026 to 30th June 2026\"", "text", False),
     ("iks_date", "project_info", "Date the IKS-Beschreibung finalized", "date", True),
+    ("has_subservice_org", "project_info", "True/false, from the checkbox on the project page -- use with {% if has_subservice_org %} to show/hide subservice-organization wording (e.g. AWS/cloud subservice paragraphs)", "text", False),
     # --- Audit period ---
-    ("is_type2", "audit_period", "True/false -- use with {% if is_type2 %} to show period section", "text", False),
+    ("is_type2", "audit_period", "True/false -- use with {% if is_type2 %} to show period section, or to switch in/out operating-effectiveness (Wirksamkeit) wording that only applies to Type 2", "text", False),
     ("audit_periods", "audit_period", "List of {label, start_date, end_date} -- loop with {% for p in audit_periods %}", "text", False),
     # --- Control table ---
-    ("controls", "controls", "List of controls, each with control_id, kontrollziel, kontrollbeschreibung, test_activities, result_text", "text", False),
+    ("controls", "controls", "List of controls, each with control_id, kontrollziel, kontrollbeschreibung, test_activities, result_text, has_finding", "text", False),
     ("c.control_id", "controls", "Control ID, e.g. S-CC-1.0 (inside the controls loop)", "text", False),
     ("c.kontrollziel", "controls", "Kontrollziel / criteria reference (inside the controls loop)", "text", False),
     ("c.kontrollbeschreibung", "controls", "Control description (inside the controls loop)", "text", False),
     ("c.test_activities", "controls", "Nested bullet structure: [{text, sub_items}] (inside the controls loop)", "text", False),
     ("c.result_text", "controls", "Result of test -- 'No deviations noted.' or the actual finding text", "text", False),
+    ("c.has_finding", "controls", "True/false -- whether this specific control has a finding (inside the controls loop)", "text", False),
+    ("has_findings", "controls", "True/false, across the whole engagement -- use with {% if has_findings %} to switch to qualified/eingeschränkt opinion wording", "text", False),
+    ("findings", "controls", "Filtered list of only the controls with a finding (same fields as controls) -- for a findings-overview table, loop with {% for f in findings %}", "text", False),
 ]
 
 # These are no longer part of the visible project form (customer_name/

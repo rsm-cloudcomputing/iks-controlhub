@@ -551,12 +551,17 @@ def generate_report(project, template_path):
     for control in project.controls.all().order_by("control_id"):
         submission = control.latest_submission
         activities = submission.test_activities_list if submission else []
+        # A control with no submission yet is "not assessed", not a finding --
+        # only count it as a finding once an actual working paper has been
+        # imported and it wasn't a clean "no deviation" result.
+        has_finding = bool(submission and not submission.no_deviation)
         controls.append({
             "control_id": control.control_id,
             "kontrollziel": control.kontrollziel,
             "kontrollbeschreibung": control.kontrollbeschreibung,
             "test_activities": _group_activities(activities),
             "result_text": submission.result_text if submission else "[Not yet assessed]",
+            "has_finding": has_finding,
         })
 
     audit_periods = [
@@ -582,6 +587,12 @@ def generate_report(project, template_path):
         "is_type2": project.is_type2,
         "audit_periods": audit_periods,
         "controls": controls,
+        # For the qualified/unqualified opinion wording and a findings-overview
+        # table: {% if has_findings %} to switch opinion wording, {% for f in
+        # findings %} to list just the controls with an actual finding.
+        "has_findings": any(c["has_finding"] for c in controls),
+        "findings": [c for c in controls if c["has_finding"]],
+        "has_subservice_org": project.has_subservice_org,
     }
     # Custom placeholders (defined on the Placeholders page, values filled in
     # per-project) are injected directly at the top level -- {{ key }} in
@@ -610,15 +621,18 @@ def generate_report(project, template_path):
     from_raw = (project.extra_fields or {}).get("audit_conducted_from", "")
     to_raw = (project.extra_fields or {}).get("audit_conducted_to", "")
     audit_conducted_from_to = ""
+    audit_conducted_to_date = ""
     if from_raw and to_raw:
         try:
             from_date = datetime.date.fromisoformat(from_raw)
             to_date = datetime.date.fromisoformat(to_raw)
             joiner = "bis" if project.language == "de" else "to"
             audit_conducted_from_to = f"{format_custom_date(from_date, date_format)} {joiner} {format_custom_date(to_date, date_format)}"
+            audit_conducted_to_date = format_custom_date(to_date, date_format)
         except (ValueError, TypeError):
             pass
     context["audit_conducted_from_to"] = audit_conducted_from_to
+    context["audit_conducted_to_date"] = audit_conducted_to_date
 
     tpl = DocxTemplate(template_path)
     tpl.render(context)

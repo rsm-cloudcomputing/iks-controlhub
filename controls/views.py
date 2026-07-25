@@ -162,14 +162,20 @@ def project_update_field(request, pk):
     if request.method == "POST" and request.headers.get("X-Requested-With") == "XMLHttpRequest":
         field = request.POST.get("field")
         value = request.POST.get("value")
-        allowed_fields = {"report_kind", "audit_type", "language"}
-        if field in allowed_fields and value:
+        text_fields = {"report_kind", "audit_type", "language"}
+        boolean_fields = {"has_subservice_org"}
+        if field in text_fields and value:
             old_language = project.language
             setattr(project, field, value)
             project.updated_by = request.user
             project.save(update_fields=[field, "updated_by", "updated_at"])
             if field == "language" and value != old_language:
                 _revalidate_project_submissions(project)
+            return JsonResponse({"status": "ok"})
+        if field in boolean_fields and value is not None:
+            setattr(project, field, value == "true")
+            project.updated_by = request.user
+            project.save(update_fields=[field, "updated_by", "updated_at"])
             return JsonResponse({"status": "ok"})
         return JsonResponse({"status": "error", "message": "Field not allowed"}, status=400)
     return JsonResponse({"status": "error"}, status=400)
