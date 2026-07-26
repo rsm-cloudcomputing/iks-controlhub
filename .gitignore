@@ -13,3 +13,4 @@ staticfiles/
 .idea/
 .vscode/
 *venv*/
+sample_files/
