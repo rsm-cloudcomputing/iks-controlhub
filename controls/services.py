@@ -770,6 +770,17 @@ def _all_text_blocks(doc):
                     yield p.text
 
 
+# Some loop sources are structurally identical to another, already-documented
+# one -- "findings" is just a filtered subset of "controls" with the exact
+# same per-item fields (control_id, kontrollziel, kontrollbeschreibung,
+# result_text, has_finding). Rather than duplicating catalog entries for
+# every field twice, loop variables from these are resolved against the
+# alias's documentation instead.
+KNOWN_SHAPE_ALIASES = {
+    "findings": "controls",
+}
+
+
 def resolve_documented_ancestor(key, loop_bindings, catalog_keys):
     """
     Given a placeholder key that may be a loop variable (e.g. "s" from
@@ -796,8 +807,22 @@ def resolve_documented_ancestor(key, loop_bindings, catalog_keys):
         root = parts[0]
         if root in loop_bindings and root not in seen:
             seen.add(root)
+            source = loop_bindings[root]
             rest = current[len(root):]
-            current = loop_bindings[root] + rest
+            # If this loop's source is a known alias for another source
+            # (e.g. "findings" is shaped just like "controls"), also try
+            # whatever variable name is ACTUALLY bound to that other source
+            # in this same template (e.g. "c" from "{%tr for c in controls
+            # %}"), since the catalog documents fields using that convention
+            # (e.g. "c.control_id"), not the source name itself.
+            if source in KNOWN_SHAPE_ALIASES:
+                aliased_source = KNOWN_SHAPE_ALIASES[source]
+                for var, src in loop_bindings.items():
+                    if src == aliased_source:
+                        candidate2 = var + rest
+                        if candidate2 in catalog_keys:
+                            return candidate2
+            current = source + rest
         else:
             break
     return None
