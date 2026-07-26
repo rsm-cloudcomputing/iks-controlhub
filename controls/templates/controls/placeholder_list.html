@@ -57,7 +57,10 @@
               </select>
             </div>
             <div style="flex:2; min-width:200px;"><label>Description</label><input type="text" name="description" value="{{ ph.description }}"></div>
-            <div style="margin-bottom:14px;"><button class="btn secondary" type="submit">Save</button></div>
+            <div style="margin-bottom:14px; display:flex; gap:8px;">
+              <button class="btn secondary" type="submit">Save</button>
+              <button type="button" class="btn-link" onclick="document.getElementById('edit-form-{{ ph.pk }}').style.display='none'; document.getElementById('ph-row-{{ ph.pk }}').style.display='table-row'; return false;">Cancel</button>
+            </div>
           </form>
         </td>
       </tr>

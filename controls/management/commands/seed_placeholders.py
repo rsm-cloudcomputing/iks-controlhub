@@ -23,7 +23,7 @@ PLACEHOLDERS = [
     ("has_subservice_org", "project_info", "True/false, from the checkbox on the project page -- use with {% if has_subservice_org %} to show/hide subservice-organization wording (e.g. AWS/cloud subservice paragraphs)", "text", False),
     # --- Audit period ---
     ("is_type2", "audit_period", "True/false -- use with {% if is_type2 %} to show period section, or to switch in/out operating-effectiveness (Wirksamkeit) wording that only applies to Type 2", "text", False),
-    ("audit_periods", "audit_period", "Audit period(s) (Type 2 — add another if the audit was split into non-continuous periods) -- list of {label, start_date, end_date}, loop with {% for p in audit_periods %}", "text", False),
+    ("audit_periods", "audit_period", "Audit period(s) (Type 2 — add another if the audit was split into non-continuous periods) -- list of {label, start_date, end_date}, loop with {% for p in audit_periods %}. For simple cases, use {{ audit_periods_text }} instead — no loop needed.", "text", False),
     ("audit_periods_text", "audit_period", "Ready-to-use text version of audit_periods, e.g. \"1st June 2026 to 2nd July 2026\" (multiple periods joined with \"; \") -- use directly with {{ audit_periods_text }}, no loop needed", "text", False),
     # --- Control table ---
     ("controls", "controls", "List of controls, each with control_id, kontrollziel, kontrollbeschreibung, test_activities, result_text, has_finding", "text", False),
@@ -48,17 +48,28 @@ DEPRECATED_KEYS = ["customer_name", "customer_address", "customer_short_address"
 class Command(BaseCommand):
     help = "Seeds the placeholder catalog and default admin user (safe to re-run)"
 
+    # Descriptions for these keys get refreshed on every run (not just on
+    # first creation) -- for built-in placeholders whose wording gets
+    # updated later; doesn't touch anything a user has manually edited on
+    # other placeholders.
+    REFRESH_DESCRIPTION_KEYS = {"audit_periods"}
+
     def handle(self, *args, **options):
         removed, _ = Placeholder.objects.filter(key__in=DEPRECATED_KEYS).delete()
 
         created = 0
+        refreshed = 0
         for key, section, description, field_type, is_custom in PLACEHOLDERS:
-            _, was_created = Placeholder.objects.get_or_create(
+            obj, was_created = Placeholder.objects.get_or_create(
                 key=key, defaults={"section": section, "description": description, "field_type": field_type, "is_custom": is_custom}
             )
             created += int(was_created)
+            if not was_created and key in self.REFRESH_DESCRIPTION_KEYS and obj.description != description:
+                obj.description = description
+                obj.save(update_fields=["description"])
+                refreshed += 1
         self.stdout.write(self.style.SUCCESS(
-            f"Seeded placeholder catalog ({created} new, {len(PLACEHOLDERS) - created} already existed, {removed} deprecated removed)"
+            f"Seeded placeholder catalog ({created} new, {len(PLACEHOLDERS) - created} already existed, {removed} deprecated removed, {refreshed} description(s) refreshed)"
         ))
 
         from django.contrib.auth.models import User
