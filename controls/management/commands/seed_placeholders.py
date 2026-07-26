@@ -24,6 +24,7 @@ PLACEHOLDERS = [
     # --- Audit period ---
     ("is_type2", "audit_period", "True/false -- use with {% if is_type2 %} to show period section, or to switch in/out operating-effectiveness (Wirksamkeit) wording that only applies to Type 2", "text", False),
     ("audit_periods", "audit_period", "Audit period(s) (Type 2 — add another if the audit was split into non-continuous periods) -- list of {label, start_date, end_date}, loop with {% for p in audit_periods %}", "text", False),
+    ("audit_periods_text", "audit_period", "Ready-to-use text version of audit_periods, e.g. \"1st June 2026 to 2nd July 2026\" (multiple periods joined with \"; \") -- use directly with {{ audit_periods_text }}, no loop needed", "text", False),
     # --- Control table ---
     ("controls", "controls", "List of controls, each with control_id, kontrollziel, kontrollbeschreibung, test_activities, result_text, has_finding", "text", False),
     ("c.control_id", "controls", "Control ID, e.g. S-CC-1.0 (inside the controls loop)", "text", False),

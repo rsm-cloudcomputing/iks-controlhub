@@ -564,14 +564,22 @@ def generate_report(project, template_path):
             "has_finding": has_finding,
         })
 
+    date_style = "de_ordinal" if project.language == "de" else "en_ordinal"
     audit_periods = [
         {
             "label": p.label or f"Period {i+1}",
-            "start_date": p.start_date.strftime("%d %B %Y"),
-            "end_date": p.end_date.strftime("%d %B %Y"),
+            "start_date": format_custom_date(p.start_date, date_style),
+            "end_date": format_custom_date(p.end_date, date_style),
         }
         for i, p in enumerate(project.audit_periods.all())
     ]
+    # Pre-formatted, ready-to-drop-in text version -- e.g. "1st June 2026 to
+    # 2nd July 2026" for a single period, or multiple periods joined with
+    # "; " if the audit was split into non-continuous periods. Use this
+    # directly with {{ audit_periods_text }} instead of writing a {% for %}
+    # loop in the template.
+    joiner = "bis" if project.language == "de" else "to"
+    audit_periods_text = "; ".join(f"{p['start_date']} {joiner} {p['end_date']}" for p in audit_periods)
 
     context = {
         "customer_name": project.customer_name,
@@ -587,6 +595,7 @@ def generate_report(project, template_path):
         "examination_date": format_custom_date(project.examination_date, "de_ordinal" if project.language == "de" else "en_ordinal") if project.examination_date else "",
         "is_type2": project.is_type2,
         "audit_periods": audit_periods,
+        "audit_periods_text": audit_periods_text,
         "controls": controls,
         # For the qualified/unqualified opinion wording and a findings-overview
         # table: {% if has_findings %} to switch opinion wording, {% for f in
