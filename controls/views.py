@@ -62,7 +62,7 @@ def project_list(request):
     return render(request, "controls/project_list.html", {"projects": projects, "stats": stats})
 
 
-BUILTIN_LABEL_KEYS = ["audit_type", "report_kind", "report_date"]
+BUILTIN_LABEL_KEYS = ["audit_type", "report_kind", "report_date", "examination_date"]
 
 
 def _builtin_placeholder_labels():
@@ -755,7 +755,7 @@ def placeholder_list(request):
     # audit_type, report_kind, [priority custom fields], report_date, examination_date.
     # Anything else (new custom placeholders, or the now-form-hidden
     # customer_name/customer_address) sorts after, in creation order.
-    project_info_order = ["audit_type", "report_kind"] + CUSTOM_PLACEHOLDER_PRIORITY + ["report_date", "audit_conducted_from_to"]
+    project_info_order = ["audit_type", "report_kind"] + CUSTOM_PLACEHOLDER_PRIORITY + ["report_date", "examination_date", "audit_conducted_from_to"]
 
     def project_info_sort_key(ph):
         if ph.key in project_info_order:

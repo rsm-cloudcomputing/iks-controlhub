@@ -26,6 +26,8 @@
 
     <label>{{ builtin_placeholders.report_date.description|default:"Report date" }} <span style="color:var(--wp-text-muted); font-weight:400;">(&#123;&#123; report_date &#125;&#125;)</span></label>{{ form.report_date }}
 
+    <label>{{ builtin_placeholders.examination_date.description|default:"Examination date" }} <span style="color:var(--wp-text-muted); font-weight:400;">(&#123;&#123; examination_date &#125;&#125;)</span></label>{{ form.examination_date }}
+
     <label>Examination period conducted <span style="color:var(--wp-text-muted); font-weight:400;">(&#123;&#123; audit_conducted_from_to &#125;&#125;)</span></label>
     <div style="display:flex; gap:10px;">
       <div style="flex:1;"><label style="font-size:11px; font-weight:400; color:var(--wp-text-muted);">From</label><input type="date" name="extra__audit_conducted_from" value="{{ project.extra_fields|get_item:'audit_conducted_from' }}"></div>

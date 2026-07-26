@@ -17,12 +17,13 @@ PLACEHOLDERS = [
     ("customer_long_address", "project_info", "Customer's full formal address", "text", True),
     ("customer_federal_state", "project_info", "Customer's federal state/region", "text", True),
     ("report_date", "project_info", "Report date", "text", False),
+    ("examination_date", "project_info", "Date of conducted audit", "date", False),
     ("audit_conducted_from_to", "project_info", "Examination period conducted, e.g. \"1st January 2026 to 30th June 2026\"", "text", False),
     ("iks_date", "project_info", "Date the IKS-Beschreibung finalized", "date", True),
     ("has_subservice_org", "project_info", "True/false, from the checkbox on the project page -- use with {% if has_subservice_org %} to show/hide subservice-organization wording (e.g. AWS/cloud subservice paragraphs)", "text", False),
     # --- Audit period ---
     ("is_type2", "audit_period", "True/false -- use with {% if is_type2 %} to show period section, or to switch in/out operating-effectiveness (Wirksamkeit) wording that only applies to Type 2", "text", False),
-    ("audit_periods", "audit_period", "List of {label, start_date, end_date} -- loop with {% for p in audit_periods %}", "text", False),
+    ("audit_periods", "audit_period", "Audit period(s) (Type 2 — add another if the audit was split into non-continuous periods) -- list of {label, start_date, end_date}, loop with {% for p in audit_periods %}", "text", False),
     # --- Control table ---
     ("controls", "controls", "List of controls, each with control_id, kontrollziel, kontrollbeschreibung, test_activities, result_text, has_finding", "text", False),
     ("c.control_id", "controls", "Control ID, e.g. S-CC-1.0 (inside the controls loop)", "text", False),
@@ -40,7 +41,7 @@ PLACEHOLDERS = [
 # instead of being separate fields) -- removed from the catalog so they
 # don't clutter the Placeholders page. The underlying context keys still
 # get set on every report regardless, so this doesn't affect templates.
-DEPRECATED_KEYS = ["customer_name", "customer_address", "customer_short_address", "examination_date"]
+DEPRECATED_KEYS = ["customer_name", "customer_address", "customer_short_address"]
 
 
 class Command(BaseCommand):

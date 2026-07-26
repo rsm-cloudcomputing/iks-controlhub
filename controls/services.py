@@ -584,6 +584,7 @@ def generate_report(project, template_path):
         "report_kind": project.get_audit_type_display(),
         "audit_type": project.get_report_kind_display(),
         "report_date": format_custom_date(project.report_date, "de_ordinal" if project.language == "de" else "en_ordinal"),
+        "examination_date": format_custom_date(project.examination_date, "de_ordinal" if project.language == "de" else "en_ordinal") if project.examination_date else "",
         "is_type2": project.is_type2,
         "audit_periods": audit_periods,
         "controls": controls,

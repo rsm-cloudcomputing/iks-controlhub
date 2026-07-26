@@ -5,9 +5,10 @@ from .models import Project, ReportTemplate, Placeholder, AuditPeriod, Arbeitspa
 class ProjectForm(forms.ModelForm):
     class Meta:
         model = Project
-        fields = ["audit_type", "report_kind", "report_date", "language"]
+        fields = ["audit_type", "report_kind", "report_date", "examination_date", "language"]
         widgets = {
             "report_date": forms.DateInput(attrs={"type": "date"}),
+            "examination_date": forms.DateInput(attrs={"type": "date"}),
         }
 
 
